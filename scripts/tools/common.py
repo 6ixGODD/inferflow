@@ -325,10 +325,7 @@ def supports_color() -> bool:
     # Check environment variables
     import os
 
-    if os.environ.get("NO_COLOR"):
-        return False
-
-    return True
+    return not os.environ.get("NO_COLOR")
 
 
 def disable_colors() -> None:
@@ -347,5 +344,4 @@ def setup_quiet_mode() -> None:
     """Redirect stdout to devnull for quiet mode."""
     import os
 
-    sys.stdout = open(os.devnull, "w")
-
+    sys.stdout = open(os.devnull, "w")  # noqa
