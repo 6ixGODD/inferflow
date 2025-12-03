@@ -1,11 +1,14 @@
-"""Common Utilities for CLI Scripts Provides logging, formatting, and
-helper functions for command-line tools."""
-
 from __future__ import annotations
 
 import pathlib as pl
 import sys
 import typing as t
+
+import colorama
+
+colorama.init(autoreset=True)
+Fore = colorama.Fore
+Style = colorama.Style
 
 
 def print_separator(char: str = "=", length: int = 76) -> None:
@@ -15,7 +18,7 @@ def print_separator(char: str = "=", length: int = 76) -> None:
         char: Character to use for the separator
         length: Length of the separator line
     """
-    print(ansi.ANSI.format(char * length, ansi.ANSI.STYLE.DIM))
+    print(Style.DIM + char * length + Style.RESET_ALL)
 
 
 def print_header(title: str) -> None:
@@ -26,7 +29,7 @@ def print_header(title: str) -> None:
     """
     print()
     print_separator()
-    print(ansi.ANSI.format(title, ansi.ANSI.STYLE.BOLD, ansi.ANSI.FG.CYAN))
+    print(Style.BRIGHT + Fore.CYAN + title + Style.RESET_ALL)
     print_separator()
     print()
 
@@ -37,7 +40,7 @@ def log_info(message: str) -> None:
     Args:
         message: Info message to display
     """
-    icon = ansi.ANSI.format("[I]", ansi.FG.BLUE)
+    icon = Fore.BLUE + "[I]" + Style.RESET_ALL
     print(f"{icon} {message}")
 
 
@@ -47,7 +50,7 @@ def log_success(message: str) -> None:
     Args:
         message: Success message to display
     """
-    icon = ansi.ANSI.format("[✓]", ansi.ANSI.FG.GREEN)
+    icon = Fore.GREEN + "[✓]" + Style.RESET_ALL
     print(f"{icon} {message}")
 
 
@@ -57,7 +60,7 @@ def log_warn(message: str) -> None:
     Args:
         message: Warning message to display
     """
-    icon = ansi.ANSI.format("[W]", ansi.ANSI.FG.YELLOW)
+    icon = Fore.YELLOW + "[W]" + Style.RESET_ALL
     print(f"{icon} {message}")
 
 
@@ -67,7 +70,7 @@ def log_error(message: str) -> None:
     Args:
         message: Error message to display
     """
-    icon = ansi.ANSI.format("[E]", ansi.ANSI.FG.RED)
+    icon = Fore.RED + "[E]" + Style.RESET_ALL
     print(f"{icon} {message}", file=sys.stderr)
 
 
@@ -77,7 +80,7 @@ def log_step(message: str) -> None:
     Args:
         message: Step message to display
     """
-    icon = ansi.ANSI.format("[*]", ansi.ANSI.FG.MAGENTA)
+    icon = Fore.MAGENTA + "[*]" + Style.RESET_ALL
     print(f"{icon} {message}")
 
 
@@ -103,7 +106,7 @@ def format_path(path: str | pl.Path) -> str:
     Returns:
         Formatted path string
     """
-    return ansi.ANSI.format(str(path), ansi.ANSI.FG.CYAN)
+    return Fore.CYAN + str(path) + Style.RESET_ALL
 
 
 def format_command(command: str) -> str:
@@ -115,7 +118,7 @@ def format_command(command: str) -> str:
     Returns:
         Formatted command string
     """
-    return ansi.ANSI.format(command, ansi.ANSI.FG.BRIGHT_CYAN)
+    return Fore.LIGHTCYAN_EX + command + Style.RESET_ALL
 
 
 def format_key(key: str) -> str:
@@ -127,12 +130,12 @@ def format_key(key: str) -> str:
     Returns:
         Formatted key string
     """
-    return ansi.ANSI.format(key, ansi.ANSI.FG.YELLOW)
+    return Fore.YELLOW + key + Style.RESET_ALL
 
 
 def format_code(text: str) -> str:
     """Format inline code."""
-    return ansi.ANSI.format(text, ansi.ANSI.FG.BRIGHT_MAGENTA)
+    return Fore.LIGHTMAGENTA_EX + text + Style.RESET_ALL
 
 
 def format_value(value: str) -> str:
@@ -144,7 +147,7 @@ def format_value(value: str) -> str:
     Returns:
         Formatted value string
     """
-    return ansi.ANSI.format(value, ansi.ANSI.FG.GREEN)
+    return Fore.GREEN + value + Style.RESET_ALL
 
 
 def format_dim(text: str) -> str:
@@ -156,7 +159,7 @@ def format_dim(text: str) -> str:
     Returns:
         Formatted text string
     """
-    return ansi.ANSI.format(text, ansi.ANSI.STYLE.DIM)
+    return Style.DIM + text + Style.RESET_ALL
 
 
 def format_bold(text: str) -> str:
@@ -168,7 +171,7 @@ def format_bold(text: str) -> str:
     Returns:
         Formatted text string
     """
-    return ansi.ANSI.format(text, ansi.ANSI.STYLE.BOLD)
+    return Style.BRIGHT + text + Style.RESET_ALL
 
 
 def format_status_success(text: str = "SUCCESS ✓") -> str:
@@ -180,7 +183,7 @@ def format_status_success(text: str = "SUCCESS ✓") -> str:
     Returns:
         Formatted status string
     """
-    return ansi.ANSI.format(text, ansi.ANSI.FG.GREEN, ansi.ANSI.STYLE.BOLD)
+    return Style.BRIGHT + Fore.GREEN + text + Style.RESET_ALL
 
 
 def format_status_failed(text: str = "FAILED ✗") -> str:
@@ -192,7 +195,7 @@ def format_status_failed(text: str = "FAILED ✗") -> str:
     Returns:
         Formatted status string
     """
-    return ansi.ANSI.format(text, ansi.ANSI.FG.RED, ansi.ANSI.STYLE.BOLD)
+    return Style.BRIGHT + Fore.RED + text + Style.RESET_ALL
 
 
 def ensure_dir(directory: str | pl.Path) -> pl.Path:
@@ -227,7 +230,7 @@ def check_file_exists(filepath: pl.Path, force: bool = False) -> bool:
         return True
 
     log_warn(f"File already exists: {filepath}")
-    prompt = ansi.ANSI.format("[?]", ansi.ANSI.FG.YELLOW)
+    prompt = Fore.YELLOW + "[? ]" + Style.RESET_ALL
     response = input(f"{prompt} Overwrite? [y/N]: ").strip().lower()
 
     if response in ("y", "yes"):
@@ -272,7 +275,7 @@ def confirm(message: str, default: bool = False) -> bool:
         True if user confirmed, False otherwise
     """
     prompt_suffix = " [Y/n]: " if default else " [y/N]: "
-    prompt = ansi.ANSI.format("?", ansi.ANSI.FG.YELLOW)
+    prompt = Fore.YELLOW + "[?]" + Style.RESET_ALL
     response = input(f"{prompt} {message}{prompt_suffix}").strip().lower()
 
     if not response:
@@ -291,7 +294,7 @@ def prompt_input(message: str, default: str = "") -> str:
     Returns:
         User's input or default value
     """
-    prompt = ansi.ANSI.format("?", ansi.ANSI.FG.CYAN)
+    prompt = Fore.CYAN + "[?]" + Style.RESET_ALL
 
     if default:
         default_text = format_dim(f"[{default}]")
@@ -305,12 +308,44 @@ def prompt_input(message: str, default: str = "") -> str:
 
 def init_ansi_formatter() -> None:
     """Initialize ANSI formatter based on environment."""
-    if not ansi.ANSI.supports_color():
-        ansi.ANSI.enable(False)
+    if not supports_color():
+        disable_colors()
+
+
+def supports_color() -> bool:
+    """Check if the terminal supports color output.
+
+    Returns:
+        True if color is supported, False otherwise
+    """
+    # Check if stdout is a terminal
+    if not hasattr(sys.stdout, "isatty") or not sys.stdout.isatty():
+        return False
+
+    # Check environment variables
+    import os
+
+    if os.environ.get("NO_COLOR"):
+        return False
+
+    return True
+
+
+def disable_colors() -> None:
+    """Disable color output by replacing color codes with empty strings."""
+    global Fore, Style
+
+    class NoColor:
+        def __getattr__(self, name: str) -> str:
+            return ""
+
+    Fore = NoColor()
+    Style = NoColor()
 
 
 def setup_quiet_mode() -> None:
     """Redirect stdout to devnull for quiet mode."""
     import os
 
-    sys.stdout = open(os.devnull, "w")  # noqa: PTH123, SIM115
+    sys.stdout = open(os.devnull, "w")
+
