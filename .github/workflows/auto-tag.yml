@@ -1,0 +1,93 @@
+name: Auto Tag from VERSION
+
+on:
+  push:
+    paths:
+      - 'VERSION'
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    name: Create Tag from VERSION
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # 使用 PAT 进行 checkout
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Read VERSION file
+        id: read_version
+        run: |
+          if [ !  -f VERSION ]; then
+            echo "❌ VERSION file not found"
+            exit 1
+          fi
+
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+
+          # Validate version format (e.g., 1.0.7, 1.0.7-a4, 1.0.7-beta.1)
+          if !  echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "Expected format: X.Y.Z or X.Y.Z-suffix (e.g., 1.0.7 or 1.0.7-a4)"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Version: $VERSION"
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          TAG="v${{ steps.read_version.outputs.version }}"
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Tag $TAG already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag $TAG does not exist, will create"
+          fi
+
+      - name: Get commit message
+        id: commit_msg
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          MSG=$(git log -1 --pretty=%B)
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$MSG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          TAG="${{ steps.read_version.outputs.tag }}"
+          VERSION="${{ steps.read_version.outputs.version }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create annotated tag
+          git tag -a "$TAG" -m "Release $VERSION" -m "${{ steps.commit_msg.outputs.message }}"
+
+          # Push tag - 使用 PAT 推送
+          git push origin "$TAG"
+
+          echo "✅ Created and pushed tag: $TAG"
+
+      - name: Tag already exists
+        if: steps.check_tag.outputs.exists == 'true'
+        run: |
+          echo "⚠️  Tag v${{ steps.read_version.outputs.version }} already exists"
+          echo "If you want to recreate it, delete the tag first:"
+          echo "  git tag -d v${{ steps.read_version.outputs.version }}"
+          echo "  git push origin :refs/tags/v${{ steps.read_version.outputs.version }}"
+          exit 1

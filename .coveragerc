@@ -1,0 +1,71 @@
+[run]
+source = inferflow
+
+branch = True
+
+omit =
+    */tests/*
+    */test_*.py
+
+    inferflow/__init__.py
+
+    */__pycache__/*
+    */site-packages/*
+    */dist-packages/*
+    */.venv/*
+    */venv/*
+    */.tox/*
+
+[report]
+precision = 2
+
+show_missing = True
+
+skip_covered = False
+
+skip_empty = True
+
+sort = Cover
+
+exclude_lines =
+    pragma: no cover
+
+    def __repr__
+    def __str__
+
+    raise AssertionError
+    raise NotImplementedError
+
+    if __name__ == .__main__.:
+
+    if TYPE_CHECKING:
+    if t\.TYPE_CHECKING:
+
+    @(abc\.)?abstractmethod
+
+    class .*\bProtocol\):
+
+    \.\.\.
+
+    ^\s*pass\s*$
+
+partial_branches =
+    pragma: no branch
+
+[html]
+directory = htmlcov
+
+title = Boxlab Coverage Report
+
+[xml]
+output = coverage.xml
+
+[json]
+output = coverage.json
+pretty_print = True
+
+[paths]
+source =
+    inferflow/
+    */inferflow/
+    */.venv/lib/python*/site-packages/inferflow/

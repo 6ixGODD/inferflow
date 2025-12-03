@@ -1,0 +1,588 @@
+/* ============================================================================
+   Audex Documentation
+   ============================================================================ */
+
+:root {
+    /* Dark Theme Colors */
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-tertiary: #1c2128;
+    --bg-hover: #21262d;
+    --bg-code: #161b22;
+
+    /* Text Colors */
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #6e7681;
+
+    /* Accent Colors */
+    --accent-blue: #58a6ff;
+    --accent-green: #3fb950;
+    --accent-yellow: #d29922;
+    --accent-red: #f85149;
+    --accent-purple: #bc8cff;
+
+    /* Border Colors */
+    --border-default: #30363d;
+    --border-muted: #21262d;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+    /* Transitions */
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================================
+   Base Styles
+   ============================================================================ */
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+}
+
+/* ============================================================================
+   Typography
+   ============================================================================ */
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-default);
+    padding-bottom: 0.3rem;
+}
+
+h1 {
+    font-size: 2.5rem;
+    border-bottom: 2px solid var(--accent-blue);
+}
+
+h2 {
+    font-size: 2rem;
+    border-bottom: 1px solid var(--border-default);
+}
+
+h3 {
+    font-size: 1.5rem;
+    border-bottom: none;
+}
+
+p {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+a {
+    color: var(--accent-blue);
+    text-decoration: none;
+    transition: var(--transition);
+    border-bottom: 1px solid transparent;
+}
+
+a:hover {
+    color: var(--accent-purple);
+    border-bottom-color: var(--accent-purple);
+}
+
+strong, b {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+em, i {
+    color: var(--accent-purple);
+}
+
+/* ============================================================================
+   Code Blocks
+   ============================================================================ */
+
+code {
+    background-color: var(--bg-code);
+    color: var(--accent-blue);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    font-size: 0.9em;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    border: 1px solid var(--border-muted);
+}
+
+pre {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    padding: 1.5rem;
+    overflow-x: auto;
+    box-shadow: var(--shadow-sm);
+    margin: 1.5rem 0;
+}
+
+pre code {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* Syntax Highlighting */
+.highlight {
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-default);
+}
+
+.highlight .c { color: var(--text-muted); font-style: italic; } /* Comment */
+.highlight .k { color: var(--accent-purple); font-weight: bold; } /* Keyword */
+.highlight .s { color: var(--accent-green); } /* String */
+.highlight .n { color: var(--text-primary); } /* Name */
+.highlight .o { color: var(--accent-blue); } /* Operator */
+.highlight .m { color: var(--accent-yellow); } /* Number */
+
+/* ============================================================================
+   Tables
+   ============================================================================ */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+thead {
+    background-color: var(--bg-tertiary);
+}
+
+th {
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 2px solid var(--border-default);
+}
+
+td {
+    color: var(--text-secondary);
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-muted);
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+tr:hover {
+    background-color: var(--bg-hover);
+    transition: var(--transition);
+}
+
+/* ============================================================================
+   Blockquotes
+   ============================================================================ */
+
+blockquote {
+    background-color: var(--bg-secondary);
+    border-left: 4px solid var(--accent-blue);
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 0 8px 8px 0;
+    color: var(--text-secondary);
+    box-shadow: var(--shadow-sm);
+}
+
+blockquote p {
+    margin: 0;
+}
+
+blockquote code {
+    background-color: var(--bg-tertiary);
+}
+
+/* ============================================================================
+   Lists
+   ============================================================================ */
+
+ul, ol {
+    color: var(--text-secondary);
+    padding-left: 1.5rem;
+    margin: 1rem 0;
+}
+
+li {
+    margin: 0.5rem 0;
+}
+
+li::marker {
+    color: var(--accent-blue);
+}
+
+/* Nested lists */
+ul ul, ol ul, ul ol, ol ol {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* ============================================================================
+   Admonitions / Callouts
+   ============================================================================ */
+
+.admonition {
+    background-color: var(--bg-secondary);
+    border-left: 4px solid var(--accent-blue);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    box-shadow: var(--shadow-sm);
+}
+
+.admonition-title {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.admonition-title::before {
+    content: "ℹ️";
+    margin-right: 0.5rem;
+}
+
+.admonition.note {
+    border-left-color: var(--accent-blue);
+}
+
+.admonition.warning {
+    border-left-color: var(--accent-yellow);
+    background-color: rgba(210, 153, 34, 0.1);
+}
+
+.admonition.warning .admonition-title::before {
+    content: "⚠️";
+}
+
+.admonition.danger {
+    border-left-color: var(--accent-red);
+    background-color: rgba(248, 81, 73, 0.1);
+}
+
+.admonition.danger .admonition-title::before {
+    content: "❌";
+}
+
+.admonition.tip {
+    border-left-color: var(--accent-green);
+    background-color: rgba(63, 185, 80, 0.1);
+}
+
+.admonition.tip .admonition-title::before {
+    content: "💡";
+}
+
+/* ============================================================================
+   Navigation
+   ============================================================================ */
+
+.md-header {
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-default);
+    box-shadow: var(--shadow-md);
+}
+
+.md-tabs {
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-default);
+}
+
+.md-nav__link {
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.md-nav__link:hover {
+    color: var(--accent-blue);
+    background-color: var(--bg-hover);
+}
+
+.md-nav__link--active {
+    color: var(--accent-blue);
+    font-weight: 600;
+}
+
+/* ============================================================================
+   Sidebar
+   ============================================================================ */
+
+.md-sidebar {
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-default);
+}
+
+.md-sidebar__scrollwrap {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-default) var(--bg-secondary);
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar {
+    width: 8px;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
+    background: var(--border-default);
+    border-radius: 4px;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* ============================================================================
+   Search
+   ============================================================================ */
+
+.md-search__input {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-default);
+    color: var(--text-primary);
+    border-radius: 6px;
+}
+
+.md-search__input::placeholder {
+    color: var(--text-muted);
+}
+
+.md-search__input:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+}
+
+/* ============================================================================
+   Buttons
+   ============================================================================ */
+
+.md-button {
+    background-color: var(--accent-blue);
+    color: var(--bg-primary);
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.md-button:hover {
+    background-color: var(--accent-purple);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.md-button--primary {
+    background-color: var(--accent-green);
+}
+
+.md-button--primary:hover {
+    background-color: var(--accent-blue);
+}
+
+/* ============================================================================
+   Footer
+   ============================================================================ */
+
+.md-footer {
+    background-color: var(--bg-secondary);
+    border-top: 1px solid var(--border-default);
+    color: var(--text-muted);
+}
+
+.md-footer-nav__link {
+    color: var(--text-secondary);
+}
+
+.md-footer-nav__link:hover {
+    color: var(--accent-blue);
+}
+
+/* ============================================================================
+   Horizontal Rules
+   ============================================================================ */
+
+hr {
+    border: none;
+    border-top: 1px solid var(--border-default);
+    margin: 2rem 0;
+}
+
+/* ============================================================================
+   Images
+   ============================================================================ */
+
+img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    margin: 1.5rem 0;
+}
+
+/* ============================================================================
+   Badges / Labels
+   ============================================================================ */
+
+.badge {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    font-size: 0.75em;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--bg-primary);
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 6px;
+    background-color: var(--accent-blue);
+}
+
+.badge-success {
+    background-color: var(--accent-green);
+}
+
+.badge-warning {
+    background-color: var(--accent-yellow);
+}
+
+.badge-danger {
+    background-color: var(--accent-red);
+}
+
+/* ============================================================================
+   Keyboard Keys
+   ============================================================================ */
+
+kbd {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-default);
+    border-radius: 4px;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+    display: inline-block;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85em;
+    padding: 0.2em 0.4em;
+    margin: 0 0.1em;
+}
+
+/* ============================================================================
+   Scrollbar (Global)
+   ============================================================================ */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-default) var(--bg-primary);
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--border-default);
+    border-radius: 5px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* ============================================================================
+   Responsive Design
+   ============================================================================ */
+
+@media screen and (max-width: 768px) {
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    h3 {
+        font-size: 1.25rem;
+    }
+
+    pre {
+        padding: 1rem;
+        font-size: 0.85rem;
+    }
+
+    table {
+        font-size: 0.9rem;
+    }
+
+    th, td {
+        padding: 0.75rem;
+    }
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.md-content {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* ============================================================================
+   Print Styles
+   ============================================================================ */
+
+@media print {
+    body {
+        background: white;
+        color: black;
+    }
+
+    a {
+        color: black;
+        text-decoration: underline;
+    }
+
+    pre, code {
+        border: 1px solid #ccc;
+        page-break-inside: avoid;
+    }
+}

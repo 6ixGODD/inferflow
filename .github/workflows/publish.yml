@@ -1,0 +1,297 @@
+name: Publish Release
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      test_pypi:
+        description: 'Publish to TestPyPI instead of PyPI'
+        required: false
+        type: boolean
+        default: false
+permissions:
+  contents: write
+  id-token: write
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+      - name: Generate changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v4
+        with:
+          configuration: |
+            {
+              "template": "## 🚀 What's Changed\n\n#{{CHANGELOG}}\n\n**Full Changelog**: #{{RELEASE_DIFF}}",
+              "categories": [
+                {
+                  "title": "## 🎉 Features",
+                  "labels": ["feature", "enhancement"]
+                },
+                {
+                  "title": "## 🐛 Bug Fixes",
+                  "labels": ["bug", "fix"]
+                },
+                {
+                  "title": "## 📚 Documentation",
+                  "labels": ["documentation", "docs"]
+                },
+                {
+                  "title": "## 🔧 Maintenance",
+                  "labels": ["chore", "refactor", "maintenance"]
+                }
+              ]
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            ## 🚀 What's New in ${{ steps.get_version.outputs.version }}
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ---
+
+            ## 📦 Installation
+
+            ### From PyPI
+            ```bash
+            pip install audex==${{ steps.get_version.outputs.version }}
+            ```
+
+            ### DEB Package (Debian/Ubuntu/Raspberry Pi)
+            ```bash
+            # Download the .deb file from assets below
+            # For ARM64 (Raspberry Pi 4/5, etc.)
+            sudo dpkg -i audex_${{ steps.get_version.outputs.version }}_arm64.deb
+
+            # For AMD64 (x86_64)
+            sudo dpkg -i audex_${{ steps.get_version.outputs.version }}_amd64.deb
+
+            # Fix dependencies if needed
+            sudo apt-get install -f
+            ```
+
+            ## 🔗 Links
+            - [PyPI Package](https://pypi.org/project/audex/${{ steps.get_version.outputs.version }}/)
+            - [Documentation](https://github.com/${{ github.repository }})
+          draft: false
+          prerelease: false
+  build-python:
+    name: Build Python Distribution
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PortAudio
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y portaudio19-dev python3-pyaudio ffmpeg
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+      - name: Verify README for PyPI
+        run: |
+          if !  grep -q "^readme = " pyproject.toml; then
+            echo "❌ pyproject.toml missing 'readme' field"
+            exit 1
+          fi
+
+          if [ !  -f README.md ]; then
+            echo "❌ README.md not found"
+            exit 1
+          fi
+
+          echo "✅ README configuration verified"
+      - name: Verify version
+        run: |
+          VERSION=$(poetry version -s)
+          echo "Building version: $VERSION"
+
+          if [[ "${{ github.event.inputs.test_pypi }}" != "true" ]]; then
+            if pip index versions audex 2>/dev/null | grep -q "$VERSION"; then
+              echo "Error: Version $VERSION already exists on PyPI"
+              exit 1
+            fi
+          fi
+      - name: Build package
+        run: poetry build
+      - name: Check distribution
+        run: |
+          poetry run pip install twine
+          poetry run twine check dist/*
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+          retention-days: 7
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: build-python
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_pypi == 'true'
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/audex
+    permissions:
+      id-token: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build-python
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_pypi != 'true'
+    continue-on-error: true
+    environment:
+      name: pypi
+      url: https://pypi.org/p/audex
+    permissions:
+      id-token: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        continue-on-error: true
+  verify-pypi:
+    name: Verify PyPI Publication
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    if: needs.publish-pypi.result == 'success'
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PortAudio
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y portaudio19-dev python3-pyaudio
+      - name: Wait for package availability
+        run: |
+          echo "Waiting for package to be available on PyPI..."
+          sleep 60
+      - name: Install from PyPI
+        run: |
+          pip install audex
+          python -c "import audex; print(f'Successfully installed audex v{audex.__version__}')"
+      - name: Test CLI
+        run: |
+          audex --version
+          audex --help
+  build-deb:
+    name: Build DEB Package (${{ matrix.arch }})
+    needs: [create-release, publish-pypi]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [arm64, amd64]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Create VERSION file
+        run: echo "${{ needs.create-release.outputs.version }}" > VERSION
+      - name: Build DEB package
+        run: |
+          cd packaging/linux
+          chmod +x build.sh
+          ./build.sh ${{ matrix.arch }}
+      - name: Verify DEB package
+        run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
+          ARCH="${{ matrix.arch }}"
+          DEB_FILE="dist/audex_${VERSION}_${ARCH}.deb"
+
+          if [ ! -f "${DEB_FILE}" ]; then
+            echo "❌ DEB file not found: ${DEB_FILE}"
+            ls -la dist/
+            exit 1
+          fi
+
+          echo "📦 Package Info:"
+          dpkg-deb --info "${DEB_FILE}"
+
+          echo ""
+          echo "📋 Package Contents:"
+          dpkg-deb --contents "${DEB_FILE}" | head -20
+      - name: Upload DEB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.arch }}
+          path: dist/audex_${{ needs.create-release.outputs.version }}_${{ matrix.arch }}.deb
+          retention-days: 7
+  upload-release-assets:
+    name: Upload Release Assets
+    needs: [create-release, build-deb]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [arm64, amd64]
+    steps:
+      - name: Download DEB artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deb-${{ matrix.arch }}
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./audex_${{ needs.create-release.outputs.version }}_${{ matrix.arch }}.deb
+          asset_name: audex_${{ needs.create-release.outputs.version }}_${{ matrix.arch }}.deb
+          asset_content_type: application/vnd.debian.binary-package
