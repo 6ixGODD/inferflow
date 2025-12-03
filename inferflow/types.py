@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-import typing as t
 from enum import Enum
+import typing as t
 
 import numpy as np
+import numpy.typing as npt
+import PIL.Image as Image
 import torch
-from PIL import Image
 
 # ============================================================================
 # Input Types
 # ============================================================================
 
-ImageInput = np.ndarray | Image.Image | torch.Tensor | bytes
+ImageInput: t.TypeAlias = t.Union[np.ndarray, npt.NDArray[np.uint8], Image.Image, torch.Tensor, bytes]  # noqa
 """Supported image input types."""
+
 
 # ============================================================================
 # Generic Type Variables
@@ -21,6 +23,7 @@ ImageInput = np.ndarray | Image.Image | torch.Tensor | bytes
 P = t.TypeVar("P")  # Preprocessed type
 R = t.TypeVar("R")  # Raw inference result type
 O = t.TypeVar("O")  # Final output type
+
 
 # ============================================================================
 # Device Types
@@ -42,7 +45,7 @@ class Device:
         self.index = index
 
     def __str__(self) -> str:
-        if self.type == DeviceType. CPU:
+        if self.type == DeviceType.CPU:
             return "cpu"
         return f"{self.type.value}:{self.index}"
 
@@ -68,7 +71,7 @@ class Box:
 
     def to_xyxy(self) -> tuple[float, float, float, float]:
         """Convert to (x1, y1, x2, y2) format."""
-        x1 = self.xc - self. w / 2
+        x1 = self.xc - self.w / 2
         y1 = self.yc - self.h / 2
         x2 = self.xc + self.w / 2
         y2 = self.yc + self.h / 2
@@ -130,60 +133,8 @@ class SegmentationOutput(t.NamedTuple):
 
 
 # ============================================================================
-# Batch Types
+# Runtime
 # ============================================================================
-
-
-class BatchConfig(t.NamedTuple):
-    """Batch processing configuration."""
-
-    enabled: bool = True
-    """Enable batch processing."""
-
-    min_batch_size: int = 1
-    """Minimum batch size."""
-
-    max_batch_size: int = 32
-    """Maximum batch size."""
-
-    max_wait_ms: float = 50
-    """Maximum wait time in milliseconds."""
-
-    queue_size: int = 100
-    """Maximum queue size."""
-
-
-class BatchMetrics(t.NamedTuple):
-    """Batch processing metrics."""
-
-    total_requests: int
-    """Total number of requests processed."""
-
-    total_batches: int
-    """Total number of batches processed."""
-
-    avg_batch_size: float
-    """Average batch size."""
-
-    avg_latency_ms: float
-    """Average latency in milliseconds."""
-
-    queue_size: int
-    """Current queue size."""
-
-
-# ============================================================================
-# Runtime Types
-# ============================================================================
-
-
-class RuntimeType(str, Enum):
-    """Supported runtime types."""
-
-    TORCHSCRIPT = "torchscript"
-    ONNX = "onnx"
-    TENSORRT = "tensorrt"
-    OPENVINO = "openvino"
 
 
 class Precision(str, Enum):
