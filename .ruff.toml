@@ -64,7 +64,7 @@ ignore = [
     "E741",    # Ambiguous variable name
     "PLR0913", # Too many arguments to function call
     "PLR2004", # Magic value used in comparison
-    "B008",
+    "N812",    # Lowercase 'l' imported as non-lowercase 'L'
 ]
 
 [lint.isort]
