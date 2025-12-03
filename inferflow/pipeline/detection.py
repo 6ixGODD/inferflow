@@ -1,23 +1,29 @@
+"""Object detection pipeline implementation."""
+
 from __future__ import annotations
 
 import typing as t
 
 import cv2
 import numpy as np
-import PIL.Image as Image
+from PIL import Image
 import torch
 
 from inferflow.pipeline import Pipeline
 from inferflow.types import Box
 from inferflow.types import DetectionOutput
 from inferflow.types import ImageInput
+from inferflow.utils.yolo import nms
+from inferflow.utils.yolo import padding_resize
+from inferflow.utils.yolo import scale_bbox
+from inferflow.utils.yolo import xyxy2xywh
 
 if t.TYPE_CHECKING:
     from inferflow.batch import BatchStrategy
     from inferflow.runtime import Runtime
 
 
-class YOLOv5DetectionPipeline(Pipeline[torch.Tensor, torch.Tensor, list[DetectionOutput]]):
+class YOLOv5DetectionPipeline(Pipeline[torch.Tensor, tuple[torch.Tensor, ...], list[DetectionOutput]]):
     """YOLOv5 object detection pipeline.
 
     Performs:
@@ -57,13 +63,13 @@ class YOLOv5DetectionPipeline(Pipeline[torch.Tensor, torch.Tensor, list[Detectio
 
     def __init__(
         self,
-        runtime: Runtime[torch.Tensor, torch.Tensor],
+        runtime: Runtime[torch.Tensor, tuple[torch.Tensor, ...]],
         image_size: tuple[int, int] = (640, 640),
         stride: int = 32,
         conf_threshold: float = 0.25,
         iou_threshold: float = 0.45,
         class_names: dict[int, str] | None = None,
-        batch_strategy: BatchStrategy[torch.Tensor, torch.Tensor] | None = None,
+        batch_strategy: BatchStrategy[torch.Tensor, tuple[torch.Tensor, ...]] | None = None,
     ):
         super().__init__(runtime=runtime, batch_strategy=batch_strategy)
 
@@ -73,56 +79,8 @@ class YOLOv5DetectionPipeline(Pipeline[torch.Tensor, torch.Tensor, list[Detectio
         self.iou_threshold = iou_threshold
         self.class_names = class_names or {}
 
-        # Store original image size for rescaling
         self._original_size: tuple[int, int] | None = None
         self._padding: tuple[int, int] | None = None
-
-    def _padding_resize(self, image: np.ndarray) -> tuple[np.ndarray, tuple[int, int]]:
-        """Resize image with padding to maintain aspect ratio.
-
-        Args:
-            image: Input image (H, W, C).
-
-        Returns:
-            Tuple of (resized_image, padding).
-        """
-        h, w = image.shape[:2]
-        self._original_size = (w, h)
-
-        # Calculate scaling factor
-        scale = min(self.image_size[0] / h, self.image_size[1] / w)
-        new_h, new_w = int(h * scale), int(w * scale)
-
-        # Resize
-        resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
-
-        # Calculate padding to reach target size
-        # Make sure dimensions are divisible by stride
-        target_h = ((self.image_size[0] + self.stride - 1) // self.stride) * self.stride
-        target_w = ((self.image_size[1] + self.stride - 1) // self.stride) * self.stride
-
-        pad_h = target_h - new_h
-        pad_w = target_w - new_w
-
-        # Pad (top, bottom, left, right)
-        top = pad_h // 2
-        bottom = pad_h - top
-        left = pad_w // 2
-        right = pad_w - left
-
-        padded = cv2.copyMakeBorder(
-            resized,
-            top,
-            bottom,
-            left,
-            right,
-            cv2.BORDER_CONSTANT,
-            value=(114, 114, 114),
-        )
-
-        self._padding = (left, top)
-
-        return padded, (left, top)
 
     async def preprocess(self, input: ImageInput) -> torch.Tensor:
         """Preprocess image for YOLOv5.
@@ -131,152 +89,99 @@ class YOLOv5DetectionPipeline(Pipeline[torch.Tensor, torch.Tensor, list[Detectio
             input: Image as bytes, numpy array, PIL Image, or torch.Tensor.
 
         Returns:
-            Preprocessed tensor (C, H, W) ready for YOLOv5 inference.
+            Preprocessed tensor (1, 3, H, W) ready for YOLOv5 inference.
         """
-        # Convert to numpy array (OpenCV format)
+        # Convert to numpy
         if isinstance(input, bytes):
-            try:
-                nparr = np.frombuffer(input, np.uint8)
-                image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                if image is None:
-                    raise ValueError("Failed to decode image")
-            except Exception as e:
-                raise ValueError(f"Failed to decode image from bytes: {e}") from e
-
+            nparr = np.frombuffer(input, np.uint8)
+            image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if image is None:
+                raise ValueError("Failed to decode image")
         elif isinstance(input, Image.Image):
             image = np.array(input.convert("RGB"))
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
         elif isinstance(input, np.ndarray):
             image = input.copy()
-
         elif isinstance(input, torch.Tensor):
-            # Convert tensor to numpy
-            if input.ndim == 4:  # (B, C, H, W)
+            if input.ndim == 4:
                 input = input.squeeze(0)
-            if input.ndim == 3 and input.shape[0] in [1, 3]:  # (C, H, W)
+            if input.ndim == 3 and input.shape[0] in [1, 3]:
                 image = input.permute(1, 2, 0).cpu().numpy()
                 image = (image * 255).astype(np.uint8)
             else:
                 raise ValueError(f"Unsupported tensor shape: {input.shape}")
-
         else:
             raise ValueError(f"Unsupported input type: {type(input)}")
 
+        # Store original size
+        h, w = image.shape[:2]
+        self._original_size = (w, h)
+
         # Padding resize
-        image, padding = self._padding_resize(image)
+        image, padding = padding_resize(image, self.image_size, self.stride, full=True)
+        self._padding = padding
 
         # Convert to RGB and normalize
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = np.ascontiguousarray(image.transpose(2, 0, 1))  # HWC -> CHW
 
-        # Convert to tensor and normalize
-        return torch.from_numpy(image).float() / 255.0
+        # To tensor and normalize
+        tensor = torch.from_numpy(image).float() / 255.0
 
-    def _nms(self, predictions: torch.Tensor) -> torch.Tensor:
-        """Apply Non-Maximum Suppression.
+        # Add batch dimension
+        return tensor.unsqueeze(0)
 
-        Args:
-            predictions: Raw predictions from YOLOv5 (detections, 6+)
-                         Format: [x, y, w, h, conf, class_id, ...]
-
-        Returns:
-            Filtered predictions after NMS.
-        """
-        # Filter by confidence
-        mask = predictions[:, 4] >= self.conf_threshold
-        predictions = predictions[mask]
-
-        if len(predictions) == 0:
-            return predictions
-
-        # Get boxes and scores
-        boxes = predictions[:, :4]  # xyxy format expected
-        scores = predictions[:, 4]
-        class_ids = predictions[:, 5]
-
-        # Apply NMS per class
-        keep_indices = []
-        for class_id in class_ids.unique():
-            class_mask = class_ids == class_id
-            class_boxes = boxes[class_mask]
-            class_scores = scores[class_mask]
-
-            # torchvision NMS
-            import torchvision
-
-            keep = torchvision.ops.nms(class_boxes, class_scores, self.iou_threshold)
-            keep_indices.extend(torch.where(class_mask)[0][keep].tolist())
-
-        return predictions[keep_indices]
-
-    def _rescale_boxes(self, boxes: torch.Tensor) -> list[Box]:
-        """Rescale boxes from resized image to original image coordinates.
-
-        Args:
-            boxes: Boxes in resized image space (N, 4) [x, y, w, h].
-
-        Returns:
-            List of Box objects in original image coordinates.
-        """
-        if self._original_size is None or self._padding is None:
-            raise RuntimeError("Original size not set. Call preprocess first.")
-
-        orig_w, orig_h = self._original_size
-        pad_left, pad_top = self._padding
-
-        # Calculate scale
-        scale_w = orig_w / (self.image_size[1] - 2 * pad_left)
-        scale_h = orig_h / (self.image_size[0] - 2 * pad_top)
-
-        rescaled_boxes = []
-        for box in boxes:
-            x, y, w, h = box.tolist()
-
-            # Remove padding
-            x = (x - pad_left) * scale_w
-            y = (y - pad_top) * scale_h
-            w = w * scale_w
-            h = h * scale_h
-
-            rescaled_boxes.append(Box(xc=x, yc=y, w=w, h=h))
-
-        return rescaled_boxes
-
-    async def postprocess(self, raw: torch.Tensor) -> list[DetectionOutput]:
+    async def postprocess(self, raw: tuple[torch.Tensor, ...]) -> list[DetectionOutput]:
         """Postprocess YOLOv5 output to detection results.
 
         Args:
-            raw: Raw model output (N, 6+) where each detection is
-                 [x, y, w, h, conf, class_id, ...].
+            raw: Tuple of model outputs. First element is predictions (batch, N, 6)
+                 where each detection is [xyxy, conf, class_id].
 
         Returns:
             List of DetectionOutput objects.
         """
-        # Handle batch dimension
-        if raw.ndim == 3:  # (batch, N, 6+)
-            raw = raw[0]  # Take first item
+        # YOLOv5 detection returns tuple, take first element (predictions)
+        predictions = raw[0]
 
         # Apply NMS
-        filtered = self._nms(raw)
+        filtered = nms(
+            predictions,
+            conf_thres=self.conf_threshold,
+            iou_thres=self.iou_threshold,
+            nm=0,  # No mask coefficients for detection
+            max_det=1000,
+        )
 
-        if len(filtered) == 0:
+        # Take first batch item
+        bbox = filtered[0]
+
+        if len(bbox) == 0:
             return []
 
-        # Extract components
-        boxes_xywh = filtered[:, :4]  # Assuming center format
-        confidences = filtered[:, 4]
-        class_ids = filtered[:, 5].long()
+        # Extract components [xyxy, conf, cls]
+        boxes_xyxy = bbox[:, :4]
+        confidences = bbox[:, 4]
+        class_ids = bbox[:, 5].long()
 
-        # Rescale boxes to original image size
-        rescaled_boxes = self._rescale_boxes(boxes_xywh)
+        # Convert xyxy to xywh (center format)
+        boxes_xywh = xyxy2xywh(boxes_xyxy)
 
-        # Build detection outputs
+        # Scale boxes to original image
         detections = []
-        for box, conf, class_id in zip(rescaled_boxes, confidences, class_ids, strict=False):
+        for box_xywh, conf, class_id in zip(boxes_xywh, confidences, class_ids, strict=False):
+            scaled_box = scale_bbox(
+                tuple(box_xywh.tolist()),  # type: ignore
+                self.image_size,
+                self._original_size,  # type: ignore
+                self._padding,  # type: ignore
+            )
+
+            cx, cy, w, h = scaled_box
+
             detections.append(
                 DetectionOutput(
-                    box=box,
+                    box=Box(xc=cx, yc=cy, w=w, h=h),
                     class_id=int(class_id.item()),
                     confidence=float(conf.item()),
                     class_name=self.class_names.get(int(class_id.item())),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio as aio
 import logging
+import typing as t
 
 import torch
 
@@ -12,7 +13,7 @@ from inferflow.types import Precision
 logger = logging.getLogger("inferflow.runtime.torch")
 
 
-class TorchScriptRuntime(BatchableRuntime[torch.Tensor, torch.Tensor]):
+class TorchScriptRuntime(BatchableRuntime[torch.Tensor, t.Any]):
     """TorchScript model runtime.
 
     Supports:
@@ -28,6 +29,7 @@ class TorchScriptRuntime(BatchableRuntime[torch.Tensor, torch.Tensor]):
         precision: Model precision (default: FP32).
         warmup_iterations: Number of warmup iterations (default: 3).
         warmup_shape: Input shape for warmup (default: (1, 3, 224, 224)).
+        auto_add_batch_dim: Whether to automatically add batch dimension if input is 3D (default: False).
 
     Example:
         ```python
@@ -49,18 +51,22 @@ class TorchScriptRuntime(BatchableRuntime[torch.Tensor, torch.Tensor]):
         precision: Precision = Precision.FP32,
         warmup_iterations: int = 3,
         warmup_shape: tuple[int, ...] = (1, 3, 224, 224),
+        auto_add_batch_dim: bool = False,
     ):
         self.model_path = model_path
         self.device = Device(device) if isinstance(device, str) else device
         self.precision = precision
         self.warmup_iterations = warmup_iterations
         self.warmup_shape = warmup_shape
+        self.auto_add_batch_dim = auto_add_batch_dim
 
         self.model: torch.jit.ScriptModule | None = None
         self._torch_device: torch.device | None = None
 
         logger.info(
-            f"TorchScriptRuntime initialized: model={model_path}, device={self.device}, precision={precision.value}"
+            f"TorchScriptRuntime initialized: "
+            f"model={model_path}, device={self.device}, precision={precision.value}, "
+            f"auto_add_batch_dim={auto_add_batch_dim}"
         )
 
     async def load(self) -> None:
@@ -100,6 +106,7 @@ class TorchScriptRuntime(BatchableRuntime[torch.Tensor, torch.Tensor]):
         """Warmup the model with dummy inputs."""
         logger.info(f"Warming up model with {self.warmup_iterations} iterations")
 
+        # For warmup, use the shape as-is
         dummy_input = torch.zeros(*self.warmup_shape).to(self._torch_device)
         if self.precision == Precision.FP16:
             dummy_input = dummy_input.half()
@@ -111,7 +118,7 @@ class TorchScriptRuntime(BatchableRuntime[torch.Tensor, torch.Tensor]):
 
         logger.info("Model warmup completed")
 
-    def _infer_sync(self, input: torch.Tensor) -> torch.Tensor:
+    def _infer_sync(self, input: torch.Tensor) -> t.Any:
         """Synchronous inference (runs in thread pool)."""
         if self.model is None:
             raise RuntimeError("Model not loaded.  Call load() first.")
@@ -119,14 +126,14 @@ class TorchScriptRuntime(BatchableRuntime[torch.Tensor, torch.Tensor]):
         with torch.no_grad():
             return self.model(input)
 
-    async def infer(self, input: torch.Tensor) -> torch.Tensor:
+    async def infer(self, input: torch.Tensor) -> t.Any:
         """Run inference on a single input.
 
         Args:
             input: Input tensor (will be moved to device automatically).
 
         Returns:
-            Output tensor.
+            Output tensor or tuple of tensors.
 
         Raises:
             RuntimeError: If model is not loaded.
@@ -142,11 +149,26 @@ class TorchScriptRuntime(BatchableRuntime[torch.Tensor, torch.Tensor]):
         if self.precision == Precision.FP16 and input.dtype != torch.float16:
             input = input.half()
 
+        # Auto add batch dimension if needed
+        added_batch = False
+        if self.auto_add_batch_dim and input.ndim == 3:
+            input = input.unsqueeze(0)
+            added_batch = True
+
         # Run inference in thread pool
         loop = aio.get_event_loop()
-        return await loop.run_in_executor(None, self._infer_sync, input)
+        result = await loop.run_in_executor(None, self._infer_sync, input)
 
-    async def infer_batch(self, inputs: list[torch.Tensor]) -> list[torch.Tensor]:
+        # Remove batch dimension if we added it
+        if added_batch:
+            if isinstance(result, torch.Tensor):
+                result = result.squeeze(0)
+            elif isinstance(result, (tuple, list)):
+                result = type(result)(r.squeeze(0) if isinstance(r, torch.Tensor) else r for r in result)
+
+        return result
+
+    async def infer_batch(self, inputs: list[torch.Tensor]) -> list[t.Any]:
         """Run inference on a batch of inputs.
 
         Args:
@@ -172,7 +194,12 @@ class TorchScriptRuntime(BatchableRuntime[torch.Tensor, torch.Tensor]):
         batch_output = await loop.run_in_executor(None, self._infer_sync, batch)
 
         # Split batch output back to list
-        return [batch_output[i] for i in range(len(inputs))]
+        if isinstance(batch_output, torch.Tensor):
+            return [batch_output[i] for i in range(len(inputs))]
+        if isinstance(batch_output, (tuple, list)):
+            # Handle multiple outputs (e.g., detection + mask protos)
+            return [tuple(output[i] for output in batch_output) for i in range(len(inputs))]
+        raise TypeError(f"Unexpected output type: {type(batch_output)}")
 
     async def unload(self) -> None:
         """Unload model and free resources."""
