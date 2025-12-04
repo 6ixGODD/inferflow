@@ -33,19 +33,6 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install PortAudio (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y portaudio19-dev python3-pyaudio
-      - name: Install PortAudio (macOS)
-        if: runner.os == 'macOS'
-        run: brew install portaudio
-      - name: Install PortAudio (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          choco install portaudio -y
-        continue-on-error: true
       - name: Install Poetry (Unix)
         if: runner.os != 'Windows'
         run: |
@@ -75,7 +62,7 @@ jobs:
       - name: Run tests
         run: |
           poetry run pytest tests/ -v \
-            --cov=boxlab \
+            --cov=inferflow \
             --cov-report=xml \
             --cov-report=term-missing \
             --tb=short \
@@ -109,10 +96,6 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
-      - name: Install PortAudio
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y portaudio19-dev python3-pyaudio
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
@@ -136,7 +119,7 @@ jobs:
         continue-on-error: true
       - name: Run mypy
         run: |
-          poetry run mypy boxlab || echo "MyPy check completed with warnings"
+          poetry run mypy inferflow || echo "MyPy check completed with warnings"
         continue-on-error: true
       - name: Check formatting
         run: |
