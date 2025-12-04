@@ -32,6 +32,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          lfs: true
+
+      - name: Checkout LFS objects
+        run: git lfs pull
+
+      - name: Verify LFS files
+        run: |
+          echo "Checking LFS files..."
+          git lfs ls-files
+
+          if [ -f "docs/assets/LOGO.png" ]; then
+            FILE_SIZE=$(stat -f%z "docs/assets/LOGO.png" 2>/dev/null || stat -c%s "docs/assets/LOGO.png" 2>/dev/null)
+            echo "LOGO.png size: $FILE_SIZE bytes"
+
+            if [ "$FILE_SIZE" -lt 200 ]; then
+              echo "⚠️  Warning: LOGO.png might be an LFS pointer file"
+              head -5 "docs/assets/LOGO.png"
+            else
+              echo "✅ LOGO.png appears to be a valid image file"
+            fi
+          else
+            echo "❌ LOGO.png not found"
+            exit 1
+          fi
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -58,6 +82,17 @@ jobs:
 
       - name: Build documentation
         run: poetry run mkdocs build
+
+      - name: Verify built assets
+        run: |
+          echo "Checking built documentation assets..."
+          if [ -f "site/assets/LOGO.png" ]; then
+            FILE_SIZE=$(stat -f%z "site/assets/LOGO.png" 2>/dev/null || stat -c%s "site/assets/LOGO.png" 2>/dev/null)
+            echo "✅ Built LOGO.png size: $FILE_SIZE bytes"
+          else
+            echo "❌ LOGO.png not found in built site"
+            ls -la site/assets/ || echo "assets directory not found"
+          fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
