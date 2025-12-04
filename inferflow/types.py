@@ -19,15 +19,15 @@ if t.TYPE_CHECKING:
     - bytes (encoded image data)
     """
 
-    # Generic Type Variables
-    P = t.TypeVar("P")
-    """Preprocessed input type."""
+# Generic Type Variables
+P = t.TypeVar("P")
+"""Preprocessed input type."""
 
-    R = t.TypeVar("R")
-    """Raw inference result type."""
+R = t.TypeVar("R")
+"""Raw inference result type."""
 
-    O = t.TypeVar("O")
-    """Final output type after postprocessing."""
+O = t.TypeVar("O")
+"""Final output type after postprocessing."""
 
 
 # Device Types
