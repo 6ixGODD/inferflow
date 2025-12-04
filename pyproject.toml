@@ -44,7 +44,7 @@ optional-dependencies.dev = [
   "pylint>=4.0.4,<5",
   "pymdown-extensions>=10.17.2,<11",
   "pytest>=9.0.1,<10",
-  "pytest-asyncio>=0.23,<1",
+  "pytest-asyncio>=0.23,<2",
   "pytest-cov>=7,<8",
   "ruff>=0.14.7,<0.15",
 ]
@@ -74,7 +74,7 @@ optional-dependencies.tensorrt = [
 optional-dependencies.test = [
   "mypy>=1.19,<2",
   "pytest>=9.0.1,<10",
-  "pytest-asyncio>=0.23,<1",
+  "pytest-asyncio>=0.23,<2",
   "pytest-cov>=7,<8",
 ]
 # PyTorch (TorchScript)
