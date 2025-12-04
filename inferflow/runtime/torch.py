@@ -29,7 +29,8 @@ class TorchScriptRuntime(BatchableRuntime[torch.Tensor, t.Any]):
         precision: Model precision (default: FP32).
         warmup_iterations: Number of warmup iterations (default: 3).
         warmup_shape: Input shape for warmup (default: (1, 3, 224, 224)).
-        auto_add_batch_dim: Whether to automatically add batch dimension if input is 3D (default: False).
+        auto_add_batch_dim: Whether to automatically add batch dimension if
+            input is 3D (default: False).
 
     Example:
         ```python
@@ -181,10 +182,12 @@ class TorchScriptRuntime(BatchableRuntime[torch.Tensor, t.Any]):
             RuntimeError: If model is not loaded.
         """
         if self.model is None:
-            raise RuntimeError("Model not loaded. Call load() first.")
+            raise RuntimeError("Model not loaded.  Call load() first.")
 
-        # Stack inputs into batch
-        batch = torch.stack(inputs).to(self._torch_device)
+        # Concatenate inputs into batch (inputs already have batch dim)
+        # inputs: [(1, 3, 640, 640), (1, 3, 640, 640), ...]
+        # -> batch: (N, 3, 640, 640)
+        batch = torch.cat(inputs, dim=0).to(self._torch_device)
 
         if self.precision == Precision.FP16 and batch.dtype != torch.float16:
             batch = batch.half()
@@ -194,11 +197,21 @@ class TorchScriptRuntime(BatchableRuntime[torch.Tensor, t.Any]):
         batch_output = await loop.run_in_executor(None, self._infer_sync, batch)
 
         # Split batch output back to list
+        batch_size = len(inputs)
+
         if isinstance(batch_output, torch.Tensor):
-            return [batch_output[i] for i in range(len(inputs))]
+            # Single tensor output: split along batch dimension
+            return [batch_output[i : i + 1] for i in range(batch_size)]
         if isinstance(batch_output, (tuple, list)):
-            # Handle multiple outputs (e.g., detection + mask protos)
-            return [tuple(output[i] for output in batch_output) for i in range(len(inputs))]
+            # Multiple outputs (e.g., detection + mask protos)
+            # Each output tensor has batch dimension
+            results = []
+            for i in range(batch_size):
+                result_tuple = tuple(
+                    output[i : i + 1] if isinstance(output, torch.Tensor) else output for output in batch_output
+                )
+                results.append(result_tuple)
+            return results
         raise TypeError(f"Unexpected output type: {type(batch_output)}")
 
     async def unload(self) -> None:
