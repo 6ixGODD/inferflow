@@ -105,12 +105,13 @@ EOF
 validate_version() {
 	version="$1"
 
-	# Check semantic versioning format (X.Y.Z or X.Y.Z-suffix)
-	if ! echo "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
-		die "Invalid version format: $version (expected: X.Y.Z or X.Y.Z-suffix)"
+	# PEP 440
+	# Supports：X.Y.Z, X.Y.ZaN, X.Y.ZbN, X.Y.ZrcN, X.Y.Z.postN, X.Y.Z.devN
+	if ! echo "$version" | grep -qE '^[0-9]+(\.[0-9]+){2}((a|b|rc)[0-9]+|\.post[0-9]+|\.dev[0-9]+)?$'; then
+		die "Invalid version format: $version (expected PEP 440, e.g., 0.1.0, 0.1.0a1, 0.1.0.post1, 0.1.0.dev1)"
 	fi
 
-	log_success "Version format validated: $version"
+	log_success "Version format validated (PEP 440): $version"
 }
 
 # Get current version from VERSION file
