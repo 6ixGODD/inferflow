@@ -4,7 +4,7 @@ requires = [ "poetry-core>=2,<3" ]
 
 [project]
 name = "inferflow"
-version = "0.1.0a0"
+version = "0.1.0a1"
 description = "Universal Inference Pipeline Framework for Computer Vision"
 readme = "README.md"
 keywords = [ "computer-vision", "deep-learning", "inference", "pipeline" ]
