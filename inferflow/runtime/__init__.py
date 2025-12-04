@@ -11,7 +11,7 @@ if t.TYPE_CHECKING:
     import types
 
 
-class Runtime(abc.ABC, t.Generic[P, R]):
+class Runtime(abc.ABC, t.Generic[P, R]):  # type: ignore[misc]
     """Abstract runtime for model inference.
 
     A runtime encapsulates:

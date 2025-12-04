@@ -14,7 +14,7 @@ if t.TYPE_CHECKING:
     from inferflow.batch import BatchStrategy
 
 
-class Pipeline(abc.ABC, t.Generic[P, R, O]):
+class Pipeline(abc.ABC, t.Generic[P, R, O]):  # type: ignore[misc]
     """Abstract inference pipeline.
 
     A pipeline combines:
