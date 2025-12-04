@@ -59,7 +59,7 @@ jobs:
           restore-keys: |
             venv-${{ runner.os }}-py${{ matrix.python-version }}-
       - name: Install dependencies
-        run: poetry install --no-interaction --all-extras
+        run: poetry install --no-interaction --extras test
       - name: Run tests
         run: |
           poetry run pytest tests/ -v \
@@ -117,7 +117,7 @@ jobs:
           path: .venv
           key: venv-ubuntu-py3.11-${{ hashFiles('**/poetry.lock') }}
       - name: Install dependencies
-        run: poetry install --no-interaction --all-extras
+        run: poetry install --no-interaction --extras test --extras dev
       - name: Run ruff
         run: |
           poetry run ruff check .|| echo "Ruff check completed with warnings"
