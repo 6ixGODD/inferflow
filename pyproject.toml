@@ -38,7 +38,7 @@ optional-dependencies.dev = [
   "mkdocs>=1.5,<2",
   "mkdocs-material>=9.7,<10",
   "mkdocs-minify-plugin>=0.8,<0.9",
-  "mkdocstrings[python]>=0.24,<1",
+  "mkdocstrings[python]>=0.24,<2",
   "mypy>=1.19,<2",
   "pre-commit>=4.5,<5",
   "pylint>=4.0.4,<5",
@@ -52,7 +52,7 @@ optional-dependencies.docs = [
   "mkdocs>=1.5,<2",
   "mkdocs-material>=9.7,<10",
   "mkdocs-minify-plugin>=0.8,<0.9",
-  "mkdocstrings[python]>=0.24,<1",
+  "mkdocstrings[python]>=0.24,<2",
   "pymdown-extensions>=10.17.2,<11",
 ]
 optional-dependencies.lint = [
