@@ -123,8 +123,6 @@ plugins:
             signature_crossrefs: true
             merge_init_into_class: true
             inherited_members: false
-            ignore_warnings:
-              - "Type parameter .*"
   - minify:
       minify_html: true
       minify_js: true
