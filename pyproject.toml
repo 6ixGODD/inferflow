@@ -4,35 +4,84 @@ requires = [ "poetry-core>=2,<3" ]
 
 [project]
 name = "inferflow"
-version = "0.1.0-a"
-description = ""
+version = "0.1.0a0"
+description = "Universal Inference Pipeline Framework for Computer Vision"
 readme = "README.md"
+keywords = [ "computer-vision", "deep-learning", "inference", "pipeline" ]
+license = { text = "MIT" }
+
 authors = [
   { name = "BoChenSHEN", email = "6goddddddd@gmail.com" },
 ]
 requires-python = ">=3.10,<3.15"
 classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
   "numpy>=1.23,<1.27",
   "opencv-python>=4.5.5,<5",
   "pillow>=10,<13",
-  "torch>=2.1,<3",
-  "torchvision>=0.24.1,<0.25",
 ]
-
-optional-dependencies.dev = [ "pre-commit>=4.5,<5", "ruff>=0.14.7,<0.15" ]
-optional-dependencies.docs = [
-  "mkdoc>=0.1,<0.2",
+# Development Tools
+optional-dependencies.dev = [
+  "mkdocs>=1.5,<2",
   "mkdocs-material>=9.7,<10",
   "mkdocs-minify-plugin>=0.8,<0.9",
-  "mkdocstrings[python]>=1,<2",
+  "mkdocstrings[python]>=0.24,<1",
+  "mypy>=1.19,<2",
+  "pre-commit>=4.5,<5",
+  "pylint>=4.0.4,<5",
+  "pymdown-extensions>=10.17.2,<11",
+  "pytest>=9.0.1,<10",
+  "pytest-asyncio>=0.23,<1",
+  "pytest-cov>=7,<8",
+  "ruff>=0.14.7,<0.15",
+]
+optional-dependencies.docs = [
+  "mkdocs>=1.5,<2",
+  "mkdocs-material>=9.7,<10",
+  "mkdocs-minify-plugin>=0.8,<0.9",
+  "mkdocstrings[python]>=0.24,<1",
   "pymdown-extensions>=10.17.2,<11",
 ]
-optional-dependencies.test = [ "mypy>=1.19,<2", "pylint>=4.0.4,<5", "pytest>=9.0.1,<10", "pytest-cov>=7,<8" ]
+optional-dependencies.lint = [
+  "pylint>=4.0.4,<5",
+  "ruff>=0.14.7,<0.15",
+]
+# ONNX Runtime
+optional-dependencies.onnx = [
+  "onnxruntime>=1.14,<2",
+]
+optional-dependencies.onnx-gpu = [
+  "onnxruntime-gpu>=1.14,<2",
+]
+# TensorRT (by CUDA version)
+optional-dependencies.tensorrt = [
+  "pycuda>=2022.1,<2026",
+  "tensorrt>=8.5,<8.6,<11",
+]
+optional-dependencies.test = [
+  "mypy>=1.19,<2",
+  "pytest>=9.0.1,<10",
+  "pytest-asyncio>=0.23,<1",
+  "pytest-cov>=7,<8",
+]
+# PyTorch (TorchScript)
+optional-dependencies.torch = [
+  "torch>=2.1,<3",
+  "torchvision>=0.15,<1",
+]
+urls.Documentation = "https://6ixgodd.github.io/inferflow"
+urls.Homepage = "https://github.com/6ixGODD/inferflow"
+urls.Repository = "https://github.com/6ixGODD/inferflow"
