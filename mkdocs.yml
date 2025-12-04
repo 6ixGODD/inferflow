@@ -113,7 +113,6 @@ plugins:
             show_source: true
             show_category_heading: true
             show_symbol_type_heading: true
-            ignore_init_summary: true
             show_symbol_type_toc: true
             members_order: source
             group_by_category: true
