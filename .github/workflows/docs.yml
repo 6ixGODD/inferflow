@@ -42,13 +42,13 @@ jobs:
           echo "Checking LFS files..."
           git lfs ls-files
 
-          if [ -f "docs/assets/LOGO.png" ]; then
-            FILE_SIZE=$(stat -f%z "docs/assets/LOGO.png" 2>/dev/null || stat -c%s "docs/assets/LOGO.png" 2>/dev/null)
+          if [ -f "docs/assets/images/LOGO.png" ]; then
+            FILE_SIZE=$(stat -f%z "docs/assets/images/LOGO.png" 2>/dev/null || stat -c%s "docs/assets/images/LOGO.png" 2>/dev/null)
             echo "LOGO.png size: $FILE_SIZE bytes"
 
             if [ "$FILE_SIZE" -lt 200 ]; then
               echo "⚠️  Warning: LOGO.png might be an LFS pointer file"
-              head -5 "docs/assets/LOGO.png"
+              head -5 "docs/assets/images/LOGO.png"
             else
               echo "✅ LOGO.png appears to be a valid image file"
             fi
@@ -86,8 +86,8 @@ jobs:
       - name: Verify built assets
         run: |
           echo "Checking built documentation assets..."
-          if [ -f "site/assets/LOGO.png" ]; then
-            FILE_SIZE=$(stat -f%z "site/assets/LOGO.png" 2>/dev/null || stat -c%s "site/assets/LOGO.png" 2>/dev/null)
+          if [ -f "site/assets/images/LOGO.png" ]; then
+            FILE_SIZE=$(stat -f%z "site/assets/images/LOGO.png" 2>/dev/null || stat -c%s "site/assets/images/LOGO.png" 2>/dev/null)
             echo "✅ Built LOGO.png size: $FILE_SIZE bytes"
           else
             echo "❌ LOGO.png not found in built site"
