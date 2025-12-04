@@ -2,8 +2,20 @@ name: Tests
 on:
   push:
     branches: [master, develop]
+    paths:
+      - "inferflow/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "poetry.lock"
+      - ".github/workflows/test.yml"
   pull_request:
     branches: [master, develop]
+    paths:
+      - "inferflow/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "poetry.lock"
+      - ".github/workflows/test.yml"
   workflow_dispatch:
 jobs:
   test:
