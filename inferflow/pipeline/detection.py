@@ -10,7 +10,6 @@ import torch
 from inferflow.pipeline import Pipeline
 from inferflow.types import Box
 from inferflow.types import DetectionOutput
-from inferflow.types import ImageInput
 from inferflow.utils.yolo import nms
 from inferflow.utils.yolo import padding_resize
 from inferflow.utils.yolo import scale_bbox
@@ -19,6 +18,7 @@ from inferflow.utils.yolo import xyxy2xywh
 if t.TYPE_CHECKING:
     from inferflow.batch import BatchStrategy
     from inferflow.runtime import Runtime
+    from inferflow.types import ImageInput
 
 
 class YOLOv5DetectionPipeline(Pipeline[torch.Tensor, tuple[torch.Tensor, ...], list[DetectionOutput]]):

@@ -5,13 +5,13 @@ import contextlib
 import typing as t
 
 from inferflow.runtime import Runtime
-from inferflow.types import ImageInput
 from inferflow.types import O
 from inferflow.types import P
 from inferflow.types import R
 
 if t.TYPE_CHECKING:
     from inferflow.batch import BatchStrategy
+    from inferflow.types import ImageInput
 
 
 class Pipeline(abc.ABC, t.Generic[P, R, O]):  # type: ignore[misc]

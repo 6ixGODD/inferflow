@@ -11,11 +11,11 @@ import torchvision.transforms as T
 
 from inferflow.pipeline import Pipeline
 from inferflow.types import ClassificationOutput
-from inferflow.types import ImageInput
 
 if t.TYPE_CHECKING:
     from inferflow.batch import BatchStrategy
     from inferflow.runtime import Runtime
+    from inferflow.types import ImageInput
 
 
 class ClassificationPipeline(Pipeline[torch.Tensor, torch.Tensor, ClassificationOutput]):
@@ -80,7 +80,7 @@ class ClassificationPipeline(Pipeline[torch.Tensor, torch.Tensor, Classification
             input: Image as bytes, numpy array, PIL Image, or torch.Tensor.
 
         Returns:
-            Preprocessed tensor (C, H, W) normalized and ready for inference.
+            Preprocessed tensor (1, 3, H, W) normalized and ready for inference.
 
         Raises:
             ValueError: If input type is unsupported or image is invalid.
@@ -105,11 +105,11 @@ class ClassificationPipeline(Pipeline[torch.Tensor, torch.Tensor, Classification
             image = input.convert("RGB")
 
         elif isinstance(input, torch.Tensor):
-            # Already a tensor, just normalize
-            if input.ndim == 3:  # (C, H, W)
+            # Already a tensor
+            if input.ndim == 4:  # (1, C, H, W) - already has batch
                 tensor = input
-            elif input.ndim == 4:  # (1, C, H, W)
-                tensor = input.squeeze(0)
+            elif input.ndim == 3:  # (C, H, W) - add batch
+                tensor = input.unsqueeze(0)
             else:
                 raise ValueError(f"Unsupported tensor shape: {input.shape}")
 
@@ -120,10 +120,13 @@ class ClassificationPipeline(Pipeline[torch.Tensor, torch.Tensor, Classification
             raise ValueError(f"Unsupported input type: {type(input)}")
 
         # Apply transforms
-        tensor = self.transform(image)
+        tensor = self.transform(image)  # (C, H, W)
 
         # Normalize
-        return (tensor - self.mean) / self.std
+        tensor = (tensor - self.mean) / self.std
+
+        # Add batch dimension
+        return tensor.unsqueeze(0)  # (1, C, H, W)
 
     async def postprocess(self, raw: torch.Tensor) -> ClassificationOutput:
         """Postprocess model output to classification result.
