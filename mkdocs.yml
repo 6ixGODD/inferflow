@@ -1,1 +1,157 @@
 site_name: Inferflow Documentation
+site_description: Universal Inference Pipeline Framework
+site_author: BoChenSHEN
+site_url: https://6ixgodd.github.io/inferflow
+repo_name: 6ixGODD/inferflow
+repo_url: https://github.com/6ixGODD/inferflow
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; 2025 BoChenSHEN
+theme:
+  name: material
+  language: en
+  logo: assets/images/LOGO.png
+  favicon: assets/images/fav.svg
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.tooltips
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+extra:
+  version:
+    provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/6ixGODD
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/inferflow
+  analytics:
+    provider: google
+    property: !ENV GOOGLE_ANALYTICS_KEY
+extra_css:
+  - assets/stylesheets/extra.css
+extra_javascript:
+  - assets/javascripts/extra.js
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      title: On this page
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+plugins:
+  - search:
+      lang:
+        - en
+        - zh
+      separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            docstring_section_style: table
+            show_root_heading: true
+            show_root_full_path: false
+            show_source: true
+            show_category_heading: true
+            show_symbol_type_heading: true
+            ignore_init_summary: true
+            show_symbol_type_toc: true
+            members_order: source
+            group_by_category: true
+            show_if_no_docstring: false
+            show_signature: true
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            inherited_members: false
+            ignore_warnings:
+              - "Type parameter .*"
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+      htmlmin_opts:
+        remove_comments: true
+      cache_safe: true
+nav:
+  - Home: index.md
+  - API Reference:
+      - reference/index.md
+      - Batch Strategy:
+          - reference/batch/index.md
+          - Dynamic Batching Strategy: reference/batch/dynamic.md
+      - Pipeline:
+          - reference/pipeline/index.md
+          - Classification: reference/pipeline/classification.md
+          - Detection: reference/pipeline/detection.md
+          - Segmentation: reference/pipeline/segmentation.md
+      - Runtime:
+          - reference/runtime/index.md
+          - Torchscript Runtime: reference/runtime/torch.md
+          - ONNX Runtime: reference/runtime/onnx.md
+          - TensorRT Runtime: reference/runtime/tensorrt.md
+      - Utilities:
+          - reference/utils/index.md
+          - Image Utilities: reference/utils/image.md
+          - YOLO Utilities: reference/utils/yolo.md
+      - Types: reference/types.md
