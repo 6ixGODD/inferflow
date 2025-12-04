@@ -69,7 +69,7 @@ optional-dependencies.onnx-gpu = [
 # TensorRT (by CUDA version)
 optional-dependencies.tensorrt = [
   "pycuda>=2022.1,<2026",
-  "tensorrt>=8.5,<8.6,<11",
+  "tensorrt>=8.5,<10.15,<11",
 ]
 optional-dependencies.test = [
   "mypy>=1.19,<2",
