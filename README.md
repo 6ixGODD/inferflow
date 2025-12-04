@@ -153,16 +153,29 @@ print(f"Throughput: {metrics.total_requests / elapsed:.2f} req/s")
 
 ### Core Abstractions
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    Pipeline                         │
-│  ┌─────────────┐  ┌─────────────┐  ┌────────────┐   │
-│  │ Preprocess  │─▶│   Runtime   │─▶│Postprocess │   │
-│  └─────────────┘  └─────────────┘  └────────────┘   │
-│         │                │                 │        │
-│         └────────────────┴─────────────────┘        │
-│                    BatchStrategy                    │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Pipeline["Pipeline"]
+        direction LR
+        Pre[Preprocess]
+        Runtime[Runtime]
+        Post[Postprocess]
+
+        Pre -->|Tensor| Runtime
+        Runtime -->|Output| Post
+    end
+
+    BatchStrategy[BatchStrategy]
+
+    Pre -.->|Batching| BatchStrategy
+    Runtime -.->|Batching| BatchStrategy
+    Post -.->|Batching| BatchStrategy
+
+    style Pipeline fill:#1a1a1a,stroke:#00d9ff,stroke-width:3px
+    style Pre fill:#0d47a1,stroke:#42a5f5,stroke-width:2px,color:#fff
+    style Runtime fill:#e65100,stroke:#ff9800,stroke-width:2px,color:#fff
+    style Post fill:#6a1b9a,stroke:#ba68c8,stroke-width:2px,color:#fff
+    style BatchStrategy fill:#1b5e20,stroke:#66bb6a,stroke-width:2px,color:#fff
 ```
 
 **Components:**
@@ -170,6 +183,7 @@ print(f"Throughput: {metrics.total_requests / elapsed:.2f} req/s")
 - **Runtime**: Model loading and inference execution
 - **Pipeline**: End-to-end data transformation
 - **BatchStrategy**: Request aggregation and dispatching
+
 ---
 
 ## Requirements
