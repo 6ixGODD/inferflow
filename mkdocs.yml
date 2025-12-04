@@ -155,3 +155,4 @@ nav:
           - Image Utilities: reference/utils/image.md
           - YOLO Utilities: reference/utils/yolo.md
       - Types: reference/types.md
+  - License: license.md
