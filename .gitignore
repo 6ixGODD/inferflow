@@ -88,3 +88,14 @@ dmypy.json
 # LSP config files
 pyrightconfig.json
 
+# Machine learning model files
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.model
+*.sav
+*.h5
+*.pb
+*.tflite
+*.onnx
