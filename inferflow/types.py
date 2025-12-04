@@ -1,36 +1,37 @@
 from __future__ import annotations
 
-from enum import Enum
+import enum
 import typing as t
 
-import numpy as np
-import numpy.typing as npt
-import PIL.Image as Image
-import torch
+if t.TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
+    import PIL.Image as Image
+    import torch
 
-# ============================================================================
-# Input Types
-# ============================================================================
+    # Input Types
+    ImageInput: t.TypeAlias = t.Union[np.ndarray, npt.NDArray[np.uint8], Image.Image, torch.Tensor, bytes]  # noqa
+    """Supported image input types. Includes:
 
-ImageInput: t.TypeAlias = t.Union[np.ndarray, npt.NDArray[np.uint8], Image.Image, torch.Tensor, bytes]  # noqa
-"""Supported image input types."""
+    - numpy ndarray (H, W, C) in BGR format
+    - PIL Image
+    - torch Tensor (C, H, W) or (1, C, H, W)
+    - bytes (encoded image data)
+    """
+
+    # Generic Type Variables
+    P = t.TypeVar("P")
+    """Preprocessed input type."""
+
+    R = t.TypeVar("R")
+    """Raw inference result type."""
+
+    O = t.TypeVar("O")
+    """Final output type after postprocessing."""
 
 
-# ============================================================================
-# Generic Type Variables
-# ============================================================================
-
-P = t.TypeVar("P")  # Preprocessed type
-R = t.TypeVar("R")  # Raw inference result type
-O = t.TypeVar("O")  # Final output type
-
-
-# ============================================================================
 # Device Types
-# ============================================================================
-
-
-class DeviceType(str, Enum):
+class DeviceType(str, enum.Enum):
     CPU = "cpu"
     CUDA = "cuda"
     MPS = "mps"  # Apple Silicon
@@ -53,11 +54,7 @@ class Device:
         return f"Device({self.type.value}, {self.index})"
 
 
-# ============================================================================
 # Common Output Types
-# ============================================================================
-
-
 class Box:
     """Bounding box representation (center + width/height)."""
 
@@ -132,12 +129,8 @@ class SegmentationOutput(t.NamedTuple):
     """Human-readable class name."""
 
 
-# ============================================================================
 # Runtime
-# ============================================================================
-
-
-class Precision(str, Enum):
+class Precision(str, enum.Enum):
     """Model precision."""
 
     FP32 = "fp32"

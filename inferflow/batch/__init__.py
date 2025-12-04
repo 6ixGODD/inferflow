@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import abc
-from dataclasses import dataclass
-from dataclasses import field
+import dataclasses
 import typing as t
 
 from inferflow.types import P
@@ -12,7 +11,7 @@ if t.TYPE_CHECKING:
     from inferflow.runtime import Runtime
 
 
-@dataclass
+@dataclasses.dataclass
 class BatchMetrics:
     """Real-time batch processing metrics."""
 
@@ -34,10 +33,10 @@ class BatchMetrics:
     rejected_requests: int = 0
     """Number of rejected requests due to queue full."""
 
-    processing_times: list[float] = field(default_factory=list)
+    processing_times: list[float] = dataclasses.field(default_factory=list)
     """Recent processing times (sliding window)."""
 
-    batch_sizes: list[int] = field(default_factory=list)
+    batch_sizes: list[int] = dataclasses.field(default_factory=list)
     """Recent batch sizes (sliding window)."""
 
     @property

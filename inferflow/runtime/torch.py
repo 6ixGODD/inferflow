@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import asyncio as aio
 import logging
+import os
+import pathlib
 import typing as t
 
-import torch
+try:
+    import torch
+except ImportError as e:
+    raise ImportError("Torch is required. Install with: pip install 'inferflow[torch]'") from e
 
 from inferflow.runtime import BatchableRuntime
 from inferflow.types import Device
@@ -47,14 +52,14 @@ class TorchScriptRuntime(BatchableRuntime[torch.Tensor, t.Any]):
 
     def __init__(
         self,
-        model_path: str,
+        model_path: str | os.PathLike[str],
         device: str | Device = "cpu",
         precision: Precision = Precision.FP32,
         warmup_iterations: int = 3,
         warmup_shape: tuple[int, ...] = (1, 3, 224, 224),
         auto_add_batch_dim: bool = False,
     ):
-        self.model_path = model_path
+        self.model_path = pathlib.Path(model_path)
         self.device = Device(device) if isinstance(device, str) else device
         self.precision = precision
         self.warmup_iterations = warmup_iterations
