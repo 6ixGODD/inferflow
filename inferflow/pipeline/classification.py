@@ -1,5 +1,3 @@
-"""Classification pipeline implementation."""
-
 from __future__ import annotations
 
 import io
@@ -7,7 +5,7 @@ import typing as t
 
 import cv2
 import numpy as np
-from PIL import Image
+import PIL.Image as Image
 import torch
 import torchvision.transforms as T
 

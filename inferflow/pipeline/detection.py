@@ -1,12 +1,10 @@
-"""Object detection pipeline implementation."""
-
 from __future__ import annotations
 
 import typing as t
 
 import cv2
 import numpy as np
-from PIL import Image
+import PIL.Image as Image
 import torch
 
 from inferflow.pipeline import Pipeline
