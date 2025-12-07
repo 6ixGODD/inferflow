@@ -133,7 +133,6 @@ plugins:
 nav:
   - Home: index.md
   - API Reference:
-      - reference/index.md
       - Batch Strategy:
           - reference/batch/index.md
           - Dynamic Batching Strategy: reference/batch/dynamic.md

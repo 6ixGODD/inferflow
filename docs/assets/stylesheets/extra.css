@@ -744,7 +744,6 @@ kbd {
     }
 
     pre {
-        padding: 0.75rem;
         font-size: var(--font-size-xs);
     }
 
@@ -791,8 +790,16 @@ kbd {
     }
 
     pre, code {
-        border: 1px solid #ccc;
         page-break-inside: avoid;
         font-size: 9pt;
     }
+}
+
+
+.highlighttable .linenos {
+    background-color: var(--bg-secondary);
+}
+
+.highlighttable pre {
+    border: none;
 }
