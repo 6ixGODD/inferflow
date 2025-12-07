@@ -13,8 +13,7 @@ HERE = pathlib.Path(__file__).parent.resolve()
 def get_cpp_extension():
     # C++ source files
     cpp_sources = [
-        "csrc/bbox_ops.cpp",
-        "csrc/nms.cpp",
+        "csrc/ops/bbox_ops.cpp",
         "csrc/bindings.cpp",
     ]
 
