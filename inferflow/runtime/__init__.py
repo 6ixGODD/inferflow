@@ -59,7 +59,6 @@ class Runtime(abc.ABC, t.Generic[P, R]):  # type: ignore[misc]
         Raises:
             RuntimeError: If model is not loaded.
         """
-        ...
 
     @abc.abstractmethod
     async def unload(self) -> None:
@@ -70,7 +69,6 @@ class Runtime(abc.ABC, t.Generic[P, R]):  # type: ignore[misc]
         - Clear device cache
         - Close any open handles
         """
-        ...
 
     @contextlib.asynccontextmanager
     async def context(self) -> t.AsyncIterator[t.Self]:
@@ -123,7 +121,6 @@ class BatchableRuntime(Runtime[P, R], abc.ABC):
         Raises:
             RuntimeError: If model is not loaded.
         """
-        ...
 
     async def infer(self, input: P) -> R:
         """Single inference (delegates to batch inference)."""
