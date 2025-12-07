@@ -25,5 +25,5 @@ except ImportError as _e:
 
     _warnings.warn(f"C++ extensions not available: {_e}. Falling back to Python implementation.", stacklevel=2)
 
-__all__ = ["__init__.pyii", "HAS_CPP_EXTENSIONS"]
+__all__ = ["_C", "HAS_CPP_EXTENSIONS"]
 __version__ = "0.1.0a2"
