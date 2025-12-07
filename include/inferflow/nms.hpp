@@ -1,12 +1,12 @@
 #pragma once
 
-#include <torch/extension. h>
+#include <torch/extension.h>
 #include <vector>
 
 namespace inferflow {
 
 // Non-Maximum Suppression
-// prediction: (batch, num_boxes, 5+nc+nm) where each row is [xc, yc, w, h, obj_conf, class_confs.. ., mask_coeffs...]
+// prediction: (batch, num_boxes, 5+nc+nm) where each row is [xc, yc, w, h, obj_conf, class_confs..., mask_coeffs...]
 // conf_thres: confidence threshold
 // iou_thres: IoU threshold for NMS
 // max_det: maximum detections per image

@@ -1,13 +1,8 @@
 #include "inferflow/nms.hpp"
 #include "inferflow/bbox_ops.hpp"
-#include <torch/extension.h>
 #include <chrono>
-
-// Include TorchVision NMS (requires torchvision installation)
-namespace vision = torch::indexing;
-
-// Forward declaration of torchvision nms (we'll link against it)
-torch::Tensor nms_kernel(const torch::Tensor& dets, const torch::Tensor& scores, double iou_threshold);
+#include <algorithm>
+#include <numeric>
 
 namespace inferflow {
 
@@ -18,14 +13,14 @@ std::vector<torch::Tensor> nms(
     int max_det,
     int nm
 ) {
-    const int bs = prediction.size(0);
-    const int nc = prediction.size(2) - nm - 5;
-    const int mi = 5 + nc;
+    using namespace torch::indexing;
 
-    // Object confidence mask
+    const int64_t bs = prediction.size(0);
+    const int64_t nc = prediction.size(2) - nm - 5;
+    const int64_t mi = 5 + nc;
+
     auto xc = prediction.index({"...", 4}) > conf_thres;
 
-    // Constants
     const int max_wh = 7680;
     const int max_nms = 30000;
     const double time_limit = 0.5 + 0.05 * bs;
@@ -35,8 +30,7 @@ std::vector<torch::Tensor> nms(
     std::vector<torch::Tensor> output;
     output.reserve(bs);
 
-    for (int xi = 0; xi < bs; ++xi) {
-        // Filter by confidence
+    for (int64_t xi = 0; xi < bs; ++xi) {
         auto x = prediction[xi].index({xc[xi]});
 
         if (x.size(0) == 0) {
@@ -44,119 +38,103 @@ std::vector<torch::Tensor> nms(
             continue;
         }
 
-        // Multiply class confidence by objectness
-        x. index_put_(
-            {vision::Slice(), vision::Slice(5, vision::None)},
-            x.index({vision::Slice(), vision::Slice(5, vision::None)}) *
-            x.index({vision::Slice(), vision::Slice(4, 5)})
+        x.index_put_(
+            {Slice(), Slice(5, None)},
+            x.index({Slice(), Slice(5, None)}) * x.index({Slice(), Slice(4, 5)})
         );
 
-        // Convert boxes from xywh to xyxy
-        auto box = xywh2xyxy(x. index({vision::Slice(), vision::Slice(vision::None, 4)}));
-        auto mask = x.index({vision::Slice(), vision::Slice(mi, vision::None)});
+        auto box = xywh2xyxy(x.index({Slice(), Slice(None, 4)}));
+        auto mask = x.index({Slice(), Slice(mi, None)});
 
-        // Get best class and confidence
-        auto conf_class = x.index({vision::Slice(), vision::Slice(5, mi)}). max(1);
+        auto conf_class = x.index({Slice(), Slice(5, mi)}).max(1);
         auto conf = std::get<0>(conf_class);
-        auto j = std::get<1>(conf_class). to(torch::kFloat32);
+        auto j = std::get<1>(conf_class).to(torch::kFloat32);
 
-        // Concatenate: [xyxy, conf, class, mask_coeffs]
-        x = torch::cat({box, conf. unsqueeze(1), j. unsqueeze(1), mask}, 1);
+        x = torch::cat({box, conf.unsqueeze(1), j.unsqueeze(1), mask}, 1);
+        x = x.index({conf.view(-1) > conf_thres});
 
-        // Filter by confidence again
-        x = x.index({conf. view(-1) > conf_thres});
-
-        int n = x.size(0);
-        if (n == 0) {
+        if (x.size(0) == 0) {
             output.push_back(torch::zeros({0, 6 + nm}, prediction.options()));
             continue;
         }
 
-        // Sort by confidence and limit to max_nms
-        auto sorted_indices = x.index({vision::Slice(), 4}).argsort(/*descending=*/true);
+        auto sorted_indices = x.index({Slice(), 4}).argsort(/*descending=*/true);
         if (sorted_indices.size(0) > max_nms) {
-            sorted_indices = sorted_indices. index({vision::Slice(vision::None, max_nms)});
+            sorted_indices = sorted_indices.index({Slice(None, max_nms)});
         }
         x = x.index({sorted_indices});
 
-        // Add offset to boxes by class (to perform class-agnostic NMS)
-        auto c = x.index({vision::Slice(), vision::Slice(5, 6)}) * max_wh;
-        auto boxes = x.index({vision::Slice(), vision::Slice(vision::None, 4)}) + c;
-        auto scores = x.index({vision::Slice(), 4});
+        auto c = x.index({Slice(), Slice(5, 6)}) * max_wh;
+        auto boxes = x.index({Slice(), Slice(None, 4)}) + c;
+        auto scores = x.index({Slice(), 4});
 
-        // Call TorchVision NMS
-        torch::Tensor keep;
-        try {
-            // Try to use torchvision C++ NMS if available
-            keep = nms_kernel(boxes, scores, iou_thres);
-        } catch (...) {
-            // Fallback: use our own NMS implementation
-            std::vector<int64_t> keep_indices;
-            auto boxes_cpu = boxes.cpu();
-            auto scores_cpu = scores.cpu();
+        // Simple NMS implementation
+        auto boxes_cpu = boxes.cpu();
+        auto scores_cpu = scores.cpu();
+        int64_t num_boxes = boxes_cpu.size(0);
 
-            std::vector<int64_t> order(scores_cpu.size(0));
-            std::iota(order. begin(), order.end(), 0);
-            std::sort(order.begin(), order.end(), [&](int64_t i, int64_t j) {
-                return scores_cpu[i]. item<float>() > scores_cpu[j].item<float>();
-            });
+        std::vector<int64_t> order(num_boxes);
+        std::iota(order.begin(), order.end(), 0);
 
-            std::vector<bool> suppressed(order.size(), false);
+        std::vector<bool> suppressed(num_boxes, false);
+        std::vector<int64_t> keep_indices;
 
-            for (size_t _i = 0; _i < order.size(); ++_i) {
-                auto i = order[_i];
-                if (suppressed[i]) continue;
+        auto boxes_acc = boxes_cpu.accessor<float, 2>();
 
-                keep_indices.push_back(i);
+        for (size_t _i = 0; _i < order.size(); ++_i) {
+            auto i = order[_i];
+            if (suppressed[i]) continue;
 
-                auto box_i = boxes_cpu[i];
-                for (size_t _j = _i + 1; _j < order.size(); ++_j) {
-                    auto j = order[_j];
-                    if (suppressed[j]) continue;
+            keep_indices.push_back(i);
 
-                    auto box_j = boxes_cpu[j];
+            float x1_i = boxes_acc[i][0];
+            float y1_i = boxes_acc[i][1];
+            float x2_i = boxes_acc[i][2];
+            float y2_i = boxes_acc[i][3];
+            float area_i = (x2_i - x1_i) * (y2_i - y1_i);
 
-                    // Calculate IoU
-                    auto xx1 = std::max(box_i[0]. item<float>(), box_j[0].item<float>());
-                    auto yy1 = std::max(box_i[1].item<float>(), box_j[1].item<float>());
-                    auto xx2 = std::min(box_i[2].item<float>(), box_j[2]. item<float>());
-                    auto yy2 = std::min(box_i[3]. item<float>(), box_j[3].item<float>());
+            for (size_t _j = _i + 1; _j < order.size(); ++_j) {
+                auto j = order[_j];
+                if (suppressed[j]) continue;
 
-                    auto w = std::max(0.0f, xx2 - xx1);
-                    auto h = std::max(0.0f, yy2 - yy1);
-                    auto inter = w * h;
+                float x1_j = boxes_acc[j][0];
+                float y1_j = boxes_acc[j][1];
+                float x2_j = boxes_acc[j][2];
+                float y2_j = boxes_acc[j][3];
 
-                    auto area_i = (box_i[2] - box_i[0]). item<float>() * (box_i[3] - box_i[1]). item<float>();
-                    auto area_j = (box_j[2] - box_j[0]).item<float>() * (box_j[3] - box_j[1]).item<float>();
-                    auto union_area = area_i + area_j - inter;
+                float xx1 = std::max(x1_i, x1_j);
+                float yy1 = std::max(y1_i, y1_j);
+                float xx2 = std::min(x2_i, x2_j);
+                float yy2 = std::min(y2_i, y2_j);
 
-                    if (inter / union_area > iou_thres) {
-                        suppressed[j] = true;
-                    }
+                float w = std::max(0.0f, xx2 - xx1);
+                float h = std::max(0.0f, yy2 - yy1);
+                float inter = w * h;
+
+                float area_j = (x2_j - x1_j) * (y2_j - y1_j);
+                float iou = inter / (area_i + area_j - inter);
+
+                if (iou > iou_thres) {
+                    suppressed[j] = true;
                 }
             }
-
-            keep = torch::tensor(keep_indices, torch::kLong). to(prediction.device());
         }
 
-        // Limit to max_det
-        if (keep.size(0) > max_det) {
-            keep = keep.index({vision::Slice(vision::None, max_det)});
+        if (static_cast<int>(keep_indices.size()) > max_det) {
+            keep_indices.resize(max_det);
         }
 
+        auto keep = torch::tensor(keep_indices, torch::kLong).to(prediction.device());
         output.push_back(x.index({keep}));
 
-        // Check time limit
         auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(
             std::chrono::high_resolution_clock::now() - start_time
-        ). count();
+        ).count();
 
-        if (elapsed > time_limit) {
-            break;
-        }
+        if (elapsed > time_limit) break;
     }
 
     return output;
 }
 
-} // namespace inferflow
+}
