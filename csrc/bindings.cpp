@@ -1,9 +1,16 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include "inferflow/batch/batcher.hpp"
 #include "inferflow/ops/bbox_ops.hpp"
 
 namespace py = pybind11;
+
+namespace inferflow {
+namespace batch {
+void BindBatchModule(py::module_& parent);
+}
+}  // namespace inferflow
 
 /// @brief Main module entry point with hierarchical submodules.
 PYBIND11_MODULE(_C, m) {
@@ -66,4 +73,6 @@ Args:
 Returns:
     IoU matrix of shape (N, M)
 )doc");
+
+  inferflow::batch::BindBatchModule(m);
 }
