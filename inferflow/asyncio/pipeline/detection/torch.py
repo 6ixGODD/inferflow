@@ -9,8 +9,8 @@ from inferflow.pipeline.detection.torch import YOLODetectionMixin
 from inferflow.types import DetectionOutput
 
 if t.TYPE_CHECKING:
+    from inferflow.asyncio.batch import BatchStrategy
     from inferflow.asyncio.runtime import Runtime
-    from inferflow.batch import BatchStrategy
     from inferflow.types import ImageInput
 
 
