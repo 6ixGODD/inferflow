@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib
 import typing as t
 
+__doctitle__ = "AsyncIO-based InferFlow Modules"
+
 __all__ = ["batch", "pipeline", "runtime", "workflow"]
 
 

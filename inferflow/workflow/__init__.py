@@ -6,6 +6,8 @@ import enum
 import importlib
 import typing as t
 
+__doctitle__ = "Workflow"
+
 T_co = t.TypeVar("T_co", covariant=True)
 ContextT = t.TypeVar("ContextT")
 

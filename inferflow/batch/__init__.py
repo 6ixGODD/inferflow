@@ -11,6 +11,8 @@ from inferflow.types import R
 if t.TYPE_CHECKING:
     from inferflow.runtime import Runtime
 
+__doctitle__ = "Batch Processing Strategies"
+
 
 @dataclasses.dataclass
 class BatchMetrics:

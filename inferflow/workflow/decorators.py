@@ -10,6 +10,8 @@ from inferflow.workflow import TaskMetadata
 from inferflow.workflow import TaskNode
 from inferflow.workflow import WorkflowExecutor
 
+__doctitle__ = "Decorator-based Workflow"
+
 
 @dataclass
 class DecoratedTask(t.Generic[ContextT]):

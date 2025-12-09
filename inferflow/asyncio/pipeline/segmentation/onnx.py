@@ -10,7 +10,7 @@ from inferflow.types import SegmentationOutput
 
 if t.TYPE_CHECKING:
     from inferflow.asyncio.batch import BatchStrategy
-    from inferflow.asyncio.runtime import Runtime
+    from inferflow.asyncio.runtime.onnx import ONNXRuntime
     from inferflow.types import ImageInput
 
 
@@ -22,7 +22,7 @@ class YOLOv5SegmentationPipeline(
 
     def __init__(
         self,
-        runtime: Runtime[np.ndarray, tuple[np.ndarray, np.ndarray]],
+        runtime: ONNXRuntime,
         image_size: tuple[int, int] = (640, 640),
         stride: int = 32,
         conf_threshold: float = 0.25,

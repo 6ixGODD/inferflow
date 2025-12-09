@@ -13,6 +13,8 @@ from inferflow.runtime import BatchableRuntime
 from inferflow.runtime import RuntimeConfigMixin
 from inferflow.types import Precision
 
+__doctitle__ = "ONNX Runtime"
+
 logger = logging.getLogger("inferflow.runtime.onnx")
 
 

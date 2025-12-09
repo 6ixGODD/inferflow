@@ -14,6 +14,8 @@ from inferflow.asyncio.runtime import RuntimeConfigMixin
 from inferflow.runtime.torch import TorchRuntimeMixin
 from inferflow.types import Precision
 
+__doctitle__ = "TorchScript Runtime (Async)"
+
 logger = logging.getLogger("inferflow.asyncio.runtime.torch")
 
 

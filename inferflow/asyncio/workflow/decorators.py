@@ -10,6 +10,8 @@ from inferflow.asyncio.workflow import WorkflowExecutor
 from inferflow.workflow import ExecutionMode
 from inferflow.workflow import TaskMetadata
 
+__doctitle__ = "Decorator-based Workflow (Async)"
+
 
 @dataclasses.dataclass
 class DecoratedTask(t.Generic[ContextT]):

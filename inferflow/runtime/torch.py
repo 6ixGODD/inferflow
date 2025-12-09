@@ -13,6 +13,8 @@ from inferflow.runtime import RuntimeConfigMixin
 from inferflow.types import Precision
 from inferflow.types import R
 
+__doctitle__ = "TorchScript Runtime"
+
 logger = logging.getLogger("inferflow.runtime.torch")
 
 

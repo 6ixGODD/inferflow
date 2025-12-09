@@ -14,6 +14,8 @@ if t.TYPE_CHECKING:
     from inferflow.asyncio.runtime import Runtime
     from inferflow.types import ImageInput
 
+__doctitle__ = "Pipeline (Async)"
+
 
 class Pipeline(abc.ABC, t.Generic[P, R, O]):
     """Abstract inference pipeline (async version).

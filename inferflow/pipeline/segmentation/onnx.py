@@ -11,12 +11,12 @@ from inferflow._utils.yolo.np import scale_mask
 from inferflow._utils.yolo.np import xyxy2xywh
 from inferflow.pipeline import Pipeline
 from inferflow.pipeline.detection.onnx import YOLODetectionMixin
+from inferflow.runtime.onnx import ONNXRuntime
 from inferflow.types import Box
 from inferflow.types import SegmentationOutput
 
 if t.TYPE_CHECKING:
     from inferflow.batch import BatchStrategy
-    from inferflow.runtime import Runtime
     from inferflow.types import ImageInput
 
 
@@ -92,7 +92,7 @@ class YOLOv5SegmentationPipeline(
 
     def __init__(
         self,
-        runtime: Runtime[np.ndarray, tuple[np.ndarray, np.ndarray]],
+        runtime: ONNXRuntime,
         image_size: tuple[int, int] = (640, 640),
         stride: int = 32,
         conf_threshold: float = 0.25,
@@ -108,7 +108,6 @@ class YOLOv5SegmentationPipeline(
         self.iou_threshold = iou_threshold
         self.class_names = class_names or {}
 
-        # 👇 保存 runtime 引用
         self._runtime = runtime
 
         self._original_size = None

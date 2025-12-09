@@ -16,6 +16,8 @@ from inferflow.asyncio.runtime import BatchableRuntime
 from inferflow.asyncio.runtime import RuntimeConfigMixin
 from inferflow.runtime.onnx import ONNXRuntimeMixin
 
+__doctitle__ = "ONNX Runtime (Async)"
+
 logger = logging.getLogger("inferflow.asyncio.runtime.onnx")
 
 

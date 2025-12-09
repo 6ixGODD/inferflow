@@ -11,13 +11,13 @@ from inferflow._utils.yolo.np import padding_resize
 from inferflow._utils.yolo.np import scale_bbox
 from inferflow._utils.yolo.np import xyxy2xywh
 from inferflow.pipeline import Pipeline
+from inferflow.runtime.onnx import ONNXRuntime
 from inferflow.types import Box
 from inferflow.types import DetectionOutput
 
 if t.TYPE_CHECKING:
     from inferflow.batch import BatchStrategy
-    from inferflow.runtime.onnx import ONNXRuntime
-    from inferflow.runtime.onnx import ONNXRuntimeMixin
+    from inferflow.runtime import RuntimeConfigMixin
     from inferflow.types import ImageInput
 
 
@@ -30,7 +30,7 @@ class YOLODetectionMixin:
     iou_threshold: float
     class_names: dict[int, str]
 
-    _runtime: ONNXRuntimeMixin
+    _runtime: RuntimeConfigMixin
 
     _original_size: tuple[int, int] | None
     _padding: tuple[int, int] | None

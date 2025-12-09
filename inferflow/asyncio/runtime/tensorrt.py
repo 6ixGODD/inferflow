@@ -16,6 +16,8 @@ from inferflow.asyncio.runtime import BatchableRuntime
 from inferflow.asyncio.runtime import RuntimeConfigMixin
 from inferflow.runtime.tensorrt import TensorRTRuntimeMixin
 
+__doctitle__ = "TensorRT Runtime (Async)"
+
 logger = logging.getLogger("inferflow.asyncio.runtime.tensorrt")
 
 

@@ -12,6 +12,8 @@ from inferflow.types import R
 if t.TYPE_CHECKING:
     import types
 
+__doctitle__ = "Inference Runtimes (Async)"
+
 
 class Runtime(abc.ABC, t.Generic[P, R]):
     """Abstract runtime for model inference (async version).

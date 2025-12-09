@@ -8,6 +8,8 @@ import typing as t
 from inferflow.asyncio.workflow import WorkflowExecutor
 from inferflow.workflow import TaskMetadata
 
+__doctitle__ = "Object-oriented Workflow (Async)"
+
 InputT = t.TypeVar("InputT")
 OutputT = t.TypeVar("OutputT")
 ContextT = t.TypeVar("ContextT")

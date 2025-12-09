@@ -9,6 +9,8 @@ import typing as t
 from inferflow.workflow import TaskMetadata
 from inferflow.workflow import WorkflowExecutor
 
+__doctitle__ = "Object-oriented Workflow"
+
 InputT = t.TypeVar("InputT")
 OutputT = t.TypeVar("OutputT")
 ContextT = t.TypeVar("ContextT")

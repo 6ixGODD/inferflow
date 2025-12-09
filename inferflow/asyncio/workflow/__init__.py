@@ -7,6 +7,8 @@ import typing as t
 from inferflow.workflow import ExecutionMode
 from inferflow.workflow import TaskMetadata
 
+__doctitle__ = "Workflow (Async)"
+
 ContextT = t.TypeVar("ContextT")
 
 

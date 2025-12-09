@@ -14,6 +14,8 @@ if t.TYPE_CHECKING:
     from inferflow.runtime import Runtime
     from inferflow.types import ImageInput
 
+__doctitle__ = "Pipeline"
+
 
 class Pipeline(abc.ABC, t.Generic[P, R, O]):
     """Abstract inference pipeline (sync version).

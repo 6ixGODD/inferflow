@@ -16,6 +16,9 @@ if t.TYPE_CHECKING:
     import types
 
 
+__doctitle__ = "Inference Runtimes"
+
+
 class RuntimeConfigMixin:
     """Shared configuration and validation logic for all runtimes.
 

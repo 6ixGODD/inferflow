@@ -14,6 +14,8 @@ except ImportError as e:
 from inferflow.runtime import BatchableRuntime
 from inferflow.runtime import RuntimeConfigMixin
 
+__doctitle__ = "TensorRT Runtime"
+
 logger = logging.getLogger("inferflow.runtime.tensorrt")
 
 
