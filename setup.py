@@ -29,27 +29,27 @@ def should_build_cpp_extension() -> bool:
     """
     # Explicit environment variable
     if os.environ.get("INFERFLOW_BUILD_CPP", "0") == "1":
-        print("🔧 C++ extension build:  ENABLED (via INFERFLOW_BUILD_CPP=1)")
+        print("[C++ Build] ENABLED (via INFERFLOW_BUILD_CPP=1)")
         return True
 
     # Explicit disable
     if os.environ.get("INFERFLOW_BUILD_CPP", "0") == "0":
-        print("⏭️  C++ extension build:  DISABLED (via INFERFLOW_BUILD_CPP=0)")
+        print("[C++ Build] DISABLED (via INFERFLOW_BUILD_CPP=0)")
         return False
 
     # Check if in development mode
     if "develop" in sys.argv or any(arg.startswith("--editable") for arg in sys.argv):
-        print("🔧 C++ extension build:  ENABLED (development mode)")
+        print("[C++ Build] ENABLED (development mode)")
         return True
 
     # Check if in CI/CD
     if os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true":
-        print("🔧 C++ extension build: ENABLED (CI/CD mode)")
+        print("[C++ Build] ENABLED (CI/CD mode)")
         return True
 
     # Default:  disabled for regular pip install
-    print("⏭️  C++ extension build: DISABLED (regular install)")
-    print("   💡 To enable:  INFERFLOW_BUILD_CPP=1 pip install -e .")
+    print("[C++ Build] DISABLED (regular install)")
+    print("   Tip: To enable - INFERFLOW_BUILD_CPP=1 pip install -e .")
     return False
 
 
@@ -62,7 +62,7 @@ def get_cpp_extension():
     try:
         from torch.utils import cpp_extension
     except ImportError:
-        print("⚠️  PyTorch not found, skipping C++ extension")
+        print("[Warning] PyTorch not found, skipping C++ extension")
         print("   Install with: pip install torch")
         return None
 
@@ -75,7 +75,7 @@ def get_cpp_extension():
     # Check if source files exist
     for src in cpp_sources:
         if not (HERE / src).exists():
-            print(f"⚠️  Source file not found: {src}")
+            print(f"[Warning] Source file not found: {src}")
             print("   Skipping C++ extension build")
             return None
 
@@ -92,9 +92,9 @@ def get_cpp_extension():
     use_cuda = os.environ.get("INFERFLOW_CUDA", "0") == "1"
     if use_cuda:
         libraries.extend(["c10_cuda", "torch_cuda"])
-        print("   🚀 CUDA support:  ENABLED")
+        print("   [CUDA] ENABLED")
     else:
-        print("   ℹ️  CUDA support:  DISABLED (set INFERFLOW_CUDA=1 to enable)")
+        print("   [CUDA] DISABLED (set INFERFLOW_CUDA=1 to enable)")
 
     # Compiler flags
     extra_compile_args = {"cxx": ["-O3", "-g"]}
@@ -103,7 +103,7 @@ def get_cpp_extension():
     if sys.platform == "win32":
         extra_compile_args["cxx"].extend(["/std:c++17", "/MD"])
     else:
-        extra_compile_args["cxx"].extend(["-std: c++17", "-Wall", "-Wextra", "-fPIC"])
+        extra_compile_args["cxx"].extend(["-std:c++17", "-Wall", "-Wextra", "-fPIC"])
         if sys.platform == "darwin":
             # macOS specific
             extra_compile_args["cxx"].append("-stdlib=libc++")
@@ -116,11 +116,11 @@ def get_cpp_extension():
         tv_include = pathlib.Path(torchvision.__file__).parent / "include"
         if tv_include.exists():
             include_dirs.append(str(tv_include))
-            print(f"   ✅ TorchVision C++ headers found:  {tv_include}")
+            print(f"   [TorchVision] C++ headers found:  {tv_include}")
     except ImportError:
-        print("   ⚠️  TorchVision not found, using fallback NMS")
+        print("   [TorchVision] Not found, using fallback NMS")
 
-    print("   ✅ Building C++ extension:  inferflow._C")
+    print("   [Build] C++ extension:  inferflow._C")
 
     return cpp_extension.CppExtension(
         name="inferflow._C",
@@ -146,5 +146,5 @@ if __name__ == "__main__":
         )
     else:
         # Pure Python installation
-        print("\n📦 Installing InferFlow (pure Python mode)")
+        print("\n[Package] Installing InferFlow (pure Python mode)")
         setup()
