@@ -44,8 +44,10 @@ dependencies = [
 # Development
 optional-dependencies.dev = [
   "build>=1",
+  "halo>=0.0.30,<0.0.32",
   "inferflow[torch,test,lint,docs]",
   "pip-tools>=7",
+  "pyyaml>=6,<7",
 ]
 # Documentation
 optional-dependencies.docs = [
