@@ -99,3 +99,13 @@ pyrightconfig.json
 *.pb
 *.tflite
 *.onnx
+
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.svg
+*.ico
