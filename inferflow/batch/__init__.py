@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import importlib
 import typing as t
 
 from inferflow.types import P
@@ -81,22 +82,22 @@ class BatchStrategy(abc.ABC, t.Generic[P, R]):
     """Abstract batch processing strategy.
 
     A batch strategy manages:
-    - Request queuing
-    - Batch formation
-    - Batch execution
-    - Result distribution
+        - Request queuing
+        - Batch formation
+        - Batch execution
+        - Result distribution
 
     Example:
         ```python
         strategy = DynamicBatchStrategy(
             max_batch_size=32, max_wait_ms=50
         )
-        await strategy.start(runtime)
+        strategy.start(runtime)
 
         # Submit requests (automatically batched)
-        result = await strategy.submit(preprocessed_input)
+        result = strategy.submit(preprocessed_input)
 
-        await strategy.stop()
+        strategy.stop()
         ```
     """
 
@@ -106,7 +107,7 @@ class BatchStrategy(abc.ABC, t.Generic[P, R]):
         self._running = False
 
     @abc.abstractmethod
-    async def submit(self, item: P) -> R:
+    def submit(self, item: P) -> R:
         """Submit an item for batched processing.
 
         Args:
@@ -117,11 +118,10 @@ class BatchStrategy(abc.ABC, t.Generic[P, R]):
 
         Raises:
             RuntimeError: If strategy is not started.
-            QueueFullError: If queue is full and blocking is disabled.
         """
 
     @abc.abstractmethod
-    async def start(self, runtime: Runtime[P, R]) -> None:
+    def start(self, runtime: Runtime[P, R]) -> None:
         """Start the batch processing worker.
 
         Args:
@@ -129,7 +129,7 @@ class BatchStrategy(abc.ABC, t.Generic[P, R]):
         """
 
     @abc.abstractmethod
-    async def stop(self) -> None:
+    def stop(self) -> None:
         """Stop the batch processing worker and cleanup resources."""
 
     @property
@@ -140,3 +140,12 @@ class BatchStrategy(abc.ABC, t.Generic[P, R]):
     def get_metrics(self) -> BatchMetrics:
         """Get current batch processing metrics."""
         return self.metrics
+
+
+__all__ = ["BatchStrategy", "BatchMetrics", "dynamic"]
+
+
+def __getattr__(name: str) -> t.Any:
+    if name in __all__:
+        return importlib.import_module("." + name, __name__)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

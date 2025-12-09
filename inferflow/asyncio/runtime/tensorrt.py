@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import typing as t
 
@@ -11,111 +12,11 @@ try:
 except ImportError as e:
     raise ImportError("TensorRT is required. Install with: pip install 'inferflow[tensorrt]'") from e
 
-from inferflow.runtime import BatchableRuntime
-from inferflow.runtime import RuntimeConfigMixin
+from inferflow.asyncio.runtime import BatchableRuntime
+from inferflow.asyncio.runtime import RuntimeConfigMixin
+from inferflow.runtime.tensorrt import TensorRTRuntimeMixin
 
-logger = logging.getLogger("inferflow.runtime.tensorrt")
-
-
-# ============================================================================
-# TensorRT 专用 Mixin
-# ============================================================================
-
-
-class TensorRTRuntimeMixin:
-    """Shared TensorRT runtime logic for sync and async implementations.
-
-    This mixin provides common TensorRT-specific logic that is shared between
-    synchronous and asynchronous runtime implementations. It handles:
-
-        - Device validation (TensorRT requires CUDA)
-        - Binding memory size calculation
-        - Output shape computation
-
-    This mixin is pure logic with no I/O operations, making it safe to
-    reuse across sync and async implementations.
-
-    Attributes:
-        device: Device configuration (provided by subclass).
-
-    Example:
-        ```python
-        # In sync runtime
-        class TensorRTRuntime(
-            TensorRTRuntimeMixin,
-            RuntimeConfigMixin,
-            BatchableRuntime,
-        ):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                self._validate_tensorrt_device()  # Use mixin
-
-
-        # In async runtime - same!
-        class TensorRTRuntime(
-            TensorRTRuntimeMixin,
-            RuntimeConfigMixin,
-            BatchableRuntime,
-        ):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                self._validate_tensorrt_device()  # Same mixin!
-        ```
-    """
-
-    device: t.Any
-
-    def _validate_tensorrt_device(self) -> None:
-        """Validate that device is CUDA.
-
-        TensorRT only supports CUDA devices. This method validates
-        the device configuration.
-
-        Raises:
-            ValueError: If device is not CUDA.
-
-        Example:
-            ```python
-            # In __init__
-            self._validate_tensorrt_device()
-            # Raises if device is "cpu" or "mps"
-            ```
-        """
-        if self.device.type.value != "cuda":
-            raise ValueError("TensorRT only supports CUDA devices")
-
-    def _calculate_binding_size(
-        self,
-        binding_shape: tuple,
-        dtype: t.Any,
-    ) -> int:
-        """Calculate memory size for a binding.
-
-        Computes the total number of bytes needed for a TensorRT binding
-        based on its shape and dtype.
-
-        Args:
-            binding_shape: Shape of the binding tensor.
-            dtype: NumPy dtype of the binding.
-
-        Returns:
-            Size in bytes.
-
-        Example:
-            ```python
-            size = self._calculate_binding_size(
-                (1, 3, 640, 640), np.float32
-            )
-            # Returns 1 * 3 * 640 * 640 * 4 bytes
-            ```
-        """
-        size = trt.volume(binding_shape)
-        return size * np.dtype(dtype).itemsize
-
-
-# ============================================================================
-# 同步实现
-# ============================================================================
+logger = logging.getLogger("inferflow.asyncio.runtime.tensorrt")
 
 
 class TensorRTRuntime(
@@ -123,7 +24,13 @@ class TensorRTRuntime(
     TensorRTRuntimeMixin,
     BatchableRuntime[np.ndarray, t.Any],
 ):
-    """TensorRT Runtime for optimized inference (sync version).
+    """TensorRT Runtime for optimized inference (async version).
+
+    **Asynchronous version** of `inferflow.runtime.tensorrt.TensorRTRuntime`.
+
+    All I/O operations (engine loading, inference) are executed in a thread pool
+    to avoid blocking the event loop. The API is identical to the sync version,
+    but all methods are async.
 
     Supports:
         - TensorRT (.engine, .trt) models
@@ -131,9 +38,6 @@ class TensorRTRuntime(
         - FP32, FP16, INT8 precision
         - Batch inference
         - Automatic warmup
-
-    This is the synchronous version. For async support, see
-    `inferflow.asyncio.runtime.tensorrt.TensorRTRuntime`.
 
     Attributes:
         runtime: TensorRT runtime instance (None before load()).
@@ -157,7 +61,7 @@ class TensorRTRuntime(
 
     Example:
         ```python
-        import inferflow as iff
+        import inferflow.asyncio as iff
         import numpy as np
 
         # Initialize runtime
@@ -167,19 +71,19 @@ class TensorRTRuntime(
         )
 
         # Single inference
-        with runtime:
+        async with runtime:
             input_array = np.random.randn(1, 3, 640, 640).astype(
                 np.float32
             )
-            output = runtime.infer(input_array)
+            output = await runtime.infer(input_array)
 
         # Batch inference
-        with runtime:
+        async with runtime:
             batch = [
                 np.random.randn(1, 3, 640, 640).astype(np.float32),
                 np.random.randn(1, 3, 640, 640).astype(np.float32),
             ]
-            outputs = runtime.infer_batch(batch)
+            outputs = await runtime.infer_batch(batch)
         ```
     """
 
@@ -200,29 +104,34 @@ class TensorRTRuntime(
         self.bindings: list[int] = []
         self.stream: cuda.Stream | None = None
 
-        logger.info(f"TensorRTRuntime initialized: model={self.model_path}, device={self.device}")
+        logger.info(f"TensorRTRuntime (async) initialized: model={self.model_path}, device={self.device}")
 
-    def load(self) -> None:
-        """Load TensorRT engine and prepare for inference.
+    async def load(self) -> None:
+        """Load TensorRT engine and prepare for inference (async).
 
         Performs:
-            - Load engine from disk
+            - Load engine from disk (in thread pool)
             - Create execution context
             - Allocate device memory for inputs/outputs
             - Create CUDA stream
-            - Warmup inference
+            - Warmup inference (in thread pool)
 
         Raises:
-            FileNotFoundError:  If engine file does not exist.
+            FileNotFoundError: If engine file does not exist.
             RuntimeError: If TensorRT fails to deserialize engine.
         """
         logger.info(f"Loading TensorRT engine from {self.model_path}")
 
-        # Load engine
-        self.runtime = trt.Runtime(self.logger_trt)
-        with self.model_path.open("rb") as f:
-            engine_data = f.read()
-        self.engine = self.runtime.deserialize_cuda_engine(engine_data)
+        # Load engine in thread pool
+        loop = asyncio.get_event_loop()
+
+        def _load_engine():
+            self.runtime = trt.Runtime(self.logger_trt)
+            with self.model_path.open("rb") as f:
+                engine_data = f.read()
+            return self.runtime.deserialize_cuda_engine(engine_data)
+
+        self.engine = await loop.run_in_executor(None, _load_engine)
         self.context = self.engine.create_execution_context()
 
         # Create CUDA stream
@@ -248,10 +157,10 @@ class TensorRTRuntime(
         logger.info(f"Engine loaded: inputs={len(self.inputs)}, outputs={len(self.outputs)}")
 
         # Warmup
-        self._warmup()
+        await self._warmup()
 
-    def _warmup(self) -> None:
-        """Warmup engine with dummy inputs.
+    async def _warmup(self) -> None:
+        """Warmup engine with dummy inputs (async).
 
         Runs several inference iterations to:
             - Initialize CUDA contexts
@@ -268,13 +177,36 @@ class TensorRTRuntime(
 
         dummy_input = np.zeros(self.warmup_shape, dtype=np.float32)
 
+        loop = asyncio.get_event_loop()
+
         for _ in range(self.warmup_iterations):
-            self.infer(dummy_input)
+            await loop.run_in_executor(None, self._infer_sync, dummy_input)
 
         logger.info("Warmup completed")
 
-    def infer(self, input: np.ndarray) -> t.Any:
-        """Run inference on a single input.
+    def _infer_sync(self, input: np.ndarray) -> t.Any:
+        """Sync inference (runs in thread pool)."""
+        if self.context is None or self.stream is None:
+            raise RuntimeError("Engine not loaded. Call load() first.")
+
+        # Copy input to device
+        cuda.memcpy_htod_async(self.inputs[0], input, self.stream)
+
+        # Execute
+        self.context.execute_async_v2(bindings=self.bindings, stream_handle=self.stream.handle)
+
+        # Copy output to host
+        output_shape = self.engine.get_binding_shape(1)
+        output_dtype = trt.nptype(self.engine.get_binding_dtype(1))
+        output = np.empty(trt.volume(output_shape), dtype=output_dtype)
+
+        cuda.memcpy_dtoh_async(output, self.outputs[0], self.stream)
+        self.stream.synchronize()
+
+        return output.reshape(output_shape)
+
+    async def infer(self, input: np.ndarray) -> t.Any:
+        """Run inference on a single input (async).
 
         Uses CUDA async operations for efficient processing.
 
@@ -289,43 +221,27 @@ class TensorRTRuntime(
 
         Example:
             ```python
-            with runtime:
+            async with runtime:
                 input = np.random.randn(1, 3, 640, 640).astype(
                     np.float32
                 )
-                output = runtime.infer(input)
+                output = await runtime.infer(input)
             ```
         """
-        if self.context is None or self.stream is None:
+        if self.context is None:
             raise RuntimeError("Engine not loaded. Call load() first.")
 
-        # Copy input to device
-        cuda.memcpy_htod_async(self.inputs[0], input, self.stream)
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self._infer_sync, input)
 
-        # Execute
-        self.context.execute_async_v2(
-            bindings=self.bindings,
-            stream_handle=self.stream.handle,
-        )
-
-        # Copy output to host
-        output_shape = self.engine.get_binding_shape(1)
-        output_dtype = trt.nptype(self.engine.get_binding_dtype(1))
-        output = np.empty(trt.volume(output_shape), dtype=output_dtype)
-
-        cuda.memcpy_dtoh_async(output, self.outputs[0], self.stream)
-        self.stream.synchronize()
-
-        return output.reshape(output_shape)
-
-    def infer_batch(self, inputs: list[np.ndarray]) -> list[t.Any]:
-        """Run inference on a batch of inputs.
+    async def infer_batch(self, inputs: list[np.ndarray]) -> list[t.Any]:
+        """Run inference on a batch of inputs (async).
 
         Concatenates inputs and runs batch inference, then splits
         the output back into individual results.
 
         Args:
-            inputs: List of input arrays. Each should have shape (1, C, H, W).
+            inputs:  List of input arrays. Each should have shape (1, C, H, W).
 
         Returns:
             List of outputs, one per input. Each maintains batch dimension.
@@ -335,12 +251,12 @@ class TensorRTRuntime(
 
         Example:
             ```python
-            with runtime:
+            async with runtime:
                 batch = [
                     np.random.randn(1, 3, 640, 640).astype(np.float32),
                     np.random.randn(1, 3, 640, 640).astype(np.float32),
                 ]
-                outputs = runtime.infer_batch(batch)
+                outputs = await runtime.infer_batch(batch)
             ```
         """
         if self.context is None:
@@ -348,17 +264,17 @@ class TensorRTRuntime(
 
         # Concatenate and infer
         batch = np.concatenate(inputs, axis=0)
-        batch_output = self.infer(batch)
+        batch_output = await self.infer(batch)
 
         # Split outputs
         batch_size = len(inputs)
         if isinstance(batch_output, np.ndarray):
             return [batch_output[i : i + 1] for i in range(batch_size)]
 
-        raise TypeError(f"Unexpected output type:  {type(batch_output)}")
+        raise TypeError(f"Unexpected output type: {type(batch_output)}")
 
-    def unload(self) -> None:
-        """Unload engine and free resources.
+    async def unload(self) -> None:
+        """Unload engine and free resources (async).
 
         Performs:
             - Free CUDA device memory
@@ -385,6 +301,5 @@ class TensorRTRuntime(
 
 
 __all__ = [
-    "TensorRTRuntimeMixin",
     "TensorRTRuntime",
 ]

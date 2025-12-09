@@ -136,3 +136,17 @@ class Precision(str, enum.Enum):
     FP32 = "fp32"
     FP16 = "fp16"
     INT8 = "int8"
+
+
+__all__ = [
+    "P",
+    "R",
+    "O",
+    "DeviceType",
+    "Device",
+    "Box",
+    "ClassificationOutput",
+    "DetectionOutput",
+    "SegmentationOutput",
+    "Precision",
+]

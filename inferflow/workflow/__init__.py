@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 import dataclasses
 import enum
+import importlib
 import typing as t
 
 T_co = t.TypeVar("T_co", covariant=True)
@@ -40,17 +41,17 @@ class TaskMetadata:
 
 
 class TaskNode(t.Protocol[ContextT]):
-    """Protocol for a workflow task node."""
+    """Protocol for a workflow task node (sync version)."""
 
     @property
     def metadata(self) -> TaskMetadata:
         """Get task metadata."""
 
-    async def execute(self, context: ContextT) -> ContextT:
+    def execute(self, context: ContextT) -> ContextT:
         """Execute the task.
 
         Args:
-            context: Workflow context.
+            context:  Workflow context.
 
         Returns:
             Updated context.
@@ -60,7 +61,7 @@ class TaskNode(t.Protocol[ContextT]):
         """Check if task should execute.
 
         Args:
-            context: Current context.
+            context:  Current context.
 
         Returns:
             True if task should execute.
@@ -68,10 +69,10 @@ class TaskNode(t.Protocol[ContextT]):
 
 
 class WorkflowExecutor(abc.ABC, t.Generic[ContextT]):
-    """Abstract workflow executor."""
+    """Abstract workflow executor (sync version)."""
 
     @abc.abstractmethod
-    async def run(self, context: ContextT) -> ContextT:
+    def run(self, context: ContextT) -> ContextT:
         """Execute the workflow.
 
         Args:
@@ -80,3 +81,19 @@ class WorkflowExecutor(abc.ABC, t.Generic[ContextT]):
         Returns:
             Final context after execution.
         """
+
+
+__all__ = [
+    "ExecutionMode",
+    "TaskMetadata",
+    "TaskNode",
+    "WorkflowExecutor",
+    "decorators",
+    "tasks",
+]
+
+
+def __getattr__(name: str) -> t.Any:
+    if name in __all__:
+        return importlib.import_module("." + name, __name__)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

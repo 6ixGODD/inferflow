@@ -3,95 +3,18 @@ from __future__ import annotations
 import abc
 import contextlib
 import importlib
-import pathlib
 import typing as t
 
-from inferflow.types import Device
+from inferflow.runtime import RuntimeConfigMixin
 from inferflow.types import P
-from inferflow.types import Precision
 from inferflow.types import R
 
 if t.TYPE_CHECKING:
-    import os
     import types
 
 
-class RuntimeConfigMixin:
-    """Shared configuration and validation logic for all runtimes.
-
-    This mixin provides common configuration handling and validation that is
-    shared across all runtime implementations (sync and async, all backends).
-
-    It handles:
-        - Model path validation
-        - Device configuration
-        - Precision settings
-        - Warmup configuration
-        - Input shape specification
-
-    Attributes:
-        model_path: Path to the model file.
-        device: Device to run inference on.
-        precision: Model precision (FP32, FP16, etc.).
-        warmup_iterations: Number of warmup iterations.
-        warmup_shape: Input shape for warmup.
-
-    Args:
-        model_path: Path to model file.
-        device: Device specification (e.g., "cpu", "cuda: 0", "mps").
-        precision: Model precision (default: FP32).
-        warmup_iterations: Number of warmup iterations (default: 3).
-        warmup_shape: Input shape for warmup (default: (1, 3, 224, 224)).
-
-    Raises:
-        FileNotFoundError: If model file does not exist.
-        ValueError: If warmup_iterations is negative.
-
-    Example:
-        ```python
-        class MyRuntime(RuntimeConfigMixin, Runtime):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                # self.model_path, self.device, etc. are now available
-        ```
-    """
-
-    def __init__(
-        self,
-        model_path: str | os.PathLike[str],
-        device: str | Device,
-        precision: Precision = Precision.FP32,
-        warmup_iterations: int = 3,
-        warmup_shape: tuple[int, ...] = (1, 3, 224, 224),
-    ):
-        self.model_path = pathlib.Path(model_path)
-        self.device = Device(device) if isinstance(device, str) else device
-        self.precision = precision
-        self.warmup_iterations = warmup_iterations
-        self.warmup_shape = warmup_shape
-
-        self._validate_config()
-
-    def _validate_config(self) -> None:
-        """Validate runtime configuration.
-
-        Checks:
-            - Model file exists
-            - Warmup iterations is non-negative
-
-        Raises:
-            FileNotFoundError: If model file does not exist.
-            ValueError: If warmup_iterations is negative.
-        """
-        if not self.model_path.exists():
-            raise FileNotFoundError(f"Model not found:  {self.model_path}")
-
-        if self.warmup_iterations < 0:
-            raise ValueError("warmup_iterations must be non-negative")
-
-
 class Runtime(abc.ABC, t.Generic[P, R]):
-    """Abstract runtime for model inference (sync version).
+    """Abstract runtime for model inference (async version).
 
     A runtime encapsulates:
         - Model loading/unloading
@@ -100,7 +23,7 @@ class Runtime(abc.ABC, t.Generic[P, R]):
         - Memory management
 
     Type Parameters:
-        P:  Preprocessed input type (e.g., torch.Tensor, np.ndarray)
+        P: Preprocessed input type (e.g., torch.Tensor, np.ndarray)
         R: Raw output type from the model
 
     This is the synchronous version of the runtime. For async support,
@@ -108,43 +31,32 @@ class Runtime(abc.ABC, t.Generic[P, R]):
 
     Example:
         ```python
-        import inferflow as iff
+        import inferflow.asyncio as iff
 
         runtime = iff.TorchScriptRuntime(
             model_path="model.pt",
             device="cuda: 0",
         )
 
-        # Using context manager
-        with runtime:
+        # Using async context manager
+        async with runtime:
             result = runtime.infer(input_tensor)
 
         # Manual lifecycle
-        runtime.load()
+        await runtime.load()
         try:
-            result = runtime.infer(input_tensor)
+            result = await runtime.infer(input_tensor)
         finally:
-            runtime.unload()
+            await runtime.unload()
         ```
     """
 
     @abc.abstractmethod
-    def load(self) -> None:
-        """Load model into memory and prepare for inference.
-
-        This method should:
-            - Load model weights from disk
-            - Move model to target device
-            - Perform warmup inference
-            - Set model to evaluation mode
-
-        Raises:
-            FileNotFoundError: If model file does not exist.
-            RuntimeError: If device is not available.
-        """
+    async def load(self) -> None:
+        """Load model into memory and prepare for inference."""
 
     @abc.abstractmethod
-    def infer(self, input: P) -> R:
+    async def infer(self, input: P) -> R:
         """Run inference on preprocessed input.
 
         Args:
@@ -159,13 +71,13 @@ class Runtime(abc.ABC, t.Generic[P, R]):
 
         Example:
             ```python
-            with runtime:
-                output = runtime.infer(input_tensor)
+            async with runtime:
+                output = await runtime.infer(input_tensor)
             ```
         """
 
     @abc.abstractmethod
-    def unload(self) -> None:
+    async def unload(self) -> None:
         """Unload model and free resources.
 
         This method should:
@@ -175,15 +87,15 @@ class Runtime(abc.ABC, t.Generic[P, R]):
 
         Example:
             ```python
-            runtime.load()
+            await runtime.load()
             # ... do inference ...
-            runtime.unload()  # Free resources
+            await runtime.unload()  # Free resources
             ```
         """
 
-    @contextlib.contextmanager
-    def context(self) -> t.Iterator[t.Self]:
-        """Context manager for automatic lifecycle management.
+    @contextlib.asynccontextmanager
+    async def context(self) -> t.AsyncIterator[t.Self]:
+        """Async context manager for automatic lifecycle management.
 
         Automatically calls `load()` on entry and `unload()` on exit,
         even if an exception occurs.
@@ -193,19 +105,19 @@ class Runtime(abc.ABC, t.Generic[P, R]):
 
         Example:
             ```python
-            with runtime.context():
-                result = runtime.infer(input)
+            async with runtime.context():
+                result = await runtime.infer(input)
             # Model is automatically unloaded here
             ```
         """
-        self.load()
+        await self.load()
         try:
             yield self
         finally:
-            self.unload()
+            await self.unload()
 
-    def __enter__(self) -> t.Self:
-        """Context manager entry.
+    async def __aenter__(self) -> t.Self:
+        """Async context manager entry.
 
         Loads the model.
 
@@ -214,20 +126,20 @@ class Runtime(abc.ABC, t.Generic[P, R]):
 
         Example:
             ```python
-            with runtime:  # Calls __enter__
+            async with runtime:  # Calls __aenter__
                 result = runtime.infer(input)
             ```
         """
-        self.load()
+        await self.load()
         return self
 
-    def __exit__(
+    async def __aexit__(
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: types.TracebackType | None,
     ) -> None:
-        """Context manager exit.
+        """Async context manager exit.
 
         Unloads the model, even if an exception occurred.
 
@@ -236,11 +148,11 @@ class Runtime(abc.ABC, t.Generic[P, R]):
             exc_val: Exception value if an exception occurred.
             exc_tb: Exception traceback if an exception occurred.
         """
-        self.unload()
+        await self.unload()
 
 
 class BatchableRuntime(Runtime[P, R], abc.ABC):
-    """Runtime that supports batch inference natively (sync version).
+    """Runtime that supports batch inference natively (async version).
 
     Some runtimes (like TorchScript, ONNX) can process multiple inputs
     simultaneously for better throughput. This base class provides a
@@ -255,18 +167,22 @@ class BatchableRuntime(Runtime[P, R], abc.ABC):
 
     Example:
         ```python
-        with runtime:
+        async with runtime:
             # Single inference (delegates to batch)
-            result = runtime.infer(input)
+            result = await runtime.infer(input)
 
             # Batch inference (more efficient)
-            results = runtime.infer_batch([input1, input2, input3])
+            results = await runtime.infer_batch([
+                input1,
+                input2,
+                input3,
+            ])
         ```
     """
 
     @abc.abstractmethod
-    def infer_batch(self, inputs: list[P]) -> list[R]:
-        """Run inference on a batch of inputs.
+    async def infer_batch(self, inputs: list[P]) -> list[R]:
+        """Run inference on a batch of inputs asynchronously.
 
         Process multiple inputs in a single forward pass for better
         throughput. Inputs should already have batch dimension.
@@ -284,7 +200,7 @@ class BatchableRuntime(Runtime[P, R], abc.ABC):
 
         Example:
             ```python
-            with runtime:
+            async with runtime:
                 # Prepare batch
                 batch = [
                     torch.randn(1, 3, 224, 224),
@@ -293,13 +209,13 @@ class BatchableRuntime(Runtime[P, R], abc.ABC):
                 ]
 
                 # Batch inference
-                results = runtime.infer_batch(batch)
+                results = await runtime.infer_batch(batch)
 
                 # results[0], results[1], results[2] correspond to inputs
             ```
         """
 
-    def infer(self, input: P) -> R:
+    async def infer(self, input: P) -> R:
         """Single inference (delegates to batch inference).
 
         Wraps the input in a list, calls `infer_batch()`, and returns
@@ -317,17 +233,24 @@ class BatchableRuntime(Runtime[P, R], abc.ABC):
 
         Example:
             ```python
-            with runtime:
+            async with runtime:
                 # These are equivalent:
-                result = runtime.infer(input)
-                result = runtime.infer_batch([input])[0]
+                result = await runtime.infer(input)
+                result = await runtime.infer_batch([input])[0]
             ```
         """
-        results = self.infer_batch([input])
+        results = await self.infer_batch([input])
         return results[0]
 
 
-__all__ = ["Runtime", "BatchableRuntime", "RuntimeConfigMixin", "onnx", "tensorrt", "torch"]
+__all__ = [
+    "Runtime",
+    "BatchableRuntime",
+    "RuntimeConfigMixin",
+    "onnx",
+    "tensorrt",
+    "torch",
+]
 
 
 def __getattr__(name: str) -> t.Any:

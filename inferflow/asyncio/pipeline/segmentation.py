@@ -4,91 +4,21 @@ import typing as t
 
 import torch
 
-from inferflow.pipeline import Pipeline
-from inferflow.pipeline.detection import YOLODetectionMixin
-from inferflow.types import Box
+from inferflow.asyncio.pipeline import Pipeline
+from inferflow.pipeline.segmentation import YOLOSegmentationMixin
 from inferflow.types import SegmentationOutput
-from inferflow.utils.yolo import nms
-from inferflow.utils.yolo import process_mask
-from inferflow.utils.yolo import scale_bbox
-from inferflow.utils.yolo import scale_mask
-from inferflow.utils.yolo import xyxy2xywh
 
 if t.TYPE_CHECKING:
+    from inferflow.asyncio.runtime import Runtime
     from inferflow.batch import BatchStrategy
-    from inferflow.runtime import Runtime
     from inferflow.types import ImageInput
-
-
-class YOLOSegmentationMixin(YOLODetectionMixin):
-    """Shared YOLOv5 segmentation logic (extends detection).
-
-    Attributes:
-        image_size: Target image size.
-        stride: Model stride.
-        conf_threshold: Confidence threshold for detections.
-        iou_threshold: IoU threshold for NMS.
-        class_names: Mapping from class ID to class name.
-    """
-
-    def _postprocess_segmentation(self, detections: torch.Tensor, protos: torch.Tensor) -> list[SegmentationOutput]:
-        """Postprocess YOLO segmentation."""
-        filtered = nms(
-            detections,
-            conf_thres=self.conf_threshold,
-            iou_thres=self.iou_threshold,
-            nm=32,
-            max_det=1000,
-        )
-
-        bbox = filtered[0]
-        proto = protos[0]
-
-        if len(bbox) == 0:
-            return []
-
-        masks = process_mask(proto, bbox[:, 6:], bbox[:, :4], self.image_size, upsample=True)
-
-        if masks.ndimension() == 2:
-            masks = masks.unsqueeze(0)
-
-        masks_np = masks.cpu().numpy()
-        bbox = bbox[:, :6]
-
-        results = []
-        for mask_np, (*xyxy, conf, cls) in zip(masks_np, bbox, strict=False):
-            xywh = xyxy2xywh(torch.tensor(xyxy).view(1, 4)).view(-1).tolist()
-
-            scaled_box = scale_bbox(
-                tuple(xywh),  # type: ignore[arg-type]
-                self.image_size,
-                self._original_size,
-                self._padding,
-            )
-
-            scaled_mask = scale_mask(mask_np, self._original_size, self._padding)
-            scaled_mask = scaled_mask.astype(bool)
-
-            cx, cy, w, h = scaled_box
-
-            results.append(
-                SegmentationOutput(
-                    mask=scaled_mask,
-                    box=Box(xc=cx, yc=cy, w=w, h=h),
-                    class_id=int(cls.item()),
-                    confidence=float(conf.item()),
-                    class_name=self.class_names.get(int(cls.item())),
-                )
-            )
-
-        return results
 
 
 class YOLOv5SegmentationPipeline(
     YOLOSegmentationMixin,
     Pipeline[torch.Tensor, tuple[torch.Tensor, torch.Tensor], list[SegmentationOutput]],
 ):
-    """YOLOv5 instance segmentation pipeline (sync version).
+    """YOLOv5 instance segmentation pipeline (async version).
 
     Performs:
         - Image decoding and conversion
@@ -114,8 +44,8 @@ class YOLOv5SegmentationPipeline(
             runtime=runtime,
             class_names={0: "person", 1: "bicycle", 2: "car"},
         )
-        with pipeline.serve():
-            results = pipeline(image_bytes)
+        async with pipeline.serve():
+            results = await pipeline(image_bytes)
             for result in results:
                 print(
                     f"{result.class_name}: {result.confidence:.2%} at {result.box.to_xywh()}"
@@ -144,7 +74,7 @@ class YOLOv5SegmentationPipeline(
         self._original_size = None
         self._padding = None
 
-    def preprocess(self, input: ImageInput) -> torch.Tensor:
+    async def preprocess(self, input: ImageInput) -> torch.Tensor:
         """Preprocess image input for YOLOv5-seg.
 
         Args:
@@ -156,7 +86,7 @@ class YOLOv5SegmentationPipeline(
         image = self._convert_to_numpy(input)
         return self._preprocess_numpy(image)
 
-    def postprocess(self, raw: tuple[torch.Tensor, torch.Tensor]) -> list[SegmentationOutput]:
+    async def postprocess(self, raw: tuple[torch.Tensor, torch.Tensor]) -> list[SegmentationOutput]:
         """Postprocess YOLOv5-Seg output to segmentation results.
 
         Args:
@@ -169,4 +99,4 @@ class YOLOv5SegmentationPipeline(
         return self._postprocess_segmentation(detections, protos)
 
 
-__all__ = ["YOLOv5SegmentationPipeline", "YOLOSegmentationMixin"]
+__all__ = ["YOLOv5SegmentationPipeline"]

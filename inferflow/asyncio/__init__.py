@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import typing as t
 
-__all__ = ["image", "yolo"]
+__all__ = ["batch", "pipeline", "runtime", "workflow"]
 
 
 def __getattr__(name: str) -> t.Any:

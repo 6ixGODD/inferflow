@@ -1,24 +1,20 @@
 from __future__ import annotations
 
+import asyncio as aio
 import contextlib
 import logging
-import queue
-import threading
 import time
 import typing as t
 
-from inferflow.batch import BatchStrategy
+from inferflow.asyncio.batch import BatchStrategy
+from inferflow.batch.dynamic import QueueFullError
 from inferflow.types import P
 from inferflow.types import R
 
 if t.TYPE_CHECKING:
-    from inferflow.runtime import Runtime
+    from inferflow.asyncio.runtime import Runtime
 
-logger = logging.getLogger("inferflow.batch.dynamic")
-
-
-class QueueFullError(Exception):
-    """Raised when queue is full and blocking is disabled."""
+logger = logging.getLogger("inferflow.asyncio.batch.dynamic")
 
 
 class DynamicBatchStrategy(BatchStrategy[P, R]):
@@ -61,16 +57,16 @@ class DynamicBatchStrategy(BatchStrategy[P, R]):
         self.queue_size = queue_size
         self.block_on_full = block_on_full
 
-        self._queue: queue.Queue[tuple[P, queue.Queue[R]]] = queue.Queue(maxsize=queue_size)
-        self._worker_thread: threading.Thread | None = None
+        self._queue: aio.Queue[tuple[P, aio.Future[R]]] = aio.Queue(maxsize=queue_size)
+        self._worker_task: aio.Task[None] | None = None
 
         logger.info(
-            f"DynamicBatchStrategy initialized:  "
+            f"DynamicBatchStrategy (async) initialized: "
             f"batch_size=[{min_batch_size}, {max_batch_size}], "
             f"max_wait={max_wait_ms}ms, queue_size={queue_size}"
         )
 
-    def submit(self, item: P) -> R:
+    async def submit(self, item: P) -> R:
         """Submit an item for batched processing.
 
         Args:
@@ -86,20 +82,20 @@ class DynamicBatchStrategy(BatchStrategy[P, R]):
         if not self._running:
             raise RuntimeError("BatchStrategy not started. Call start() first.")
 
-        result_queue: queue.Queue[R] = queue.Queue(maxsize=1)
+        future: aio.Future[R] = aio.Future()
 
         if self._queue.full() and not self.block_on_full:
             self.metrics.rejected_requests += 1
             raise QueueFullError(
-                f"Queue is full ({self.queue_size} items).Rejected {self.metrics.rejected_requests} requests."
+                f"Queue is full ({self.queue_size} items). Rejected {self.metrics.rejected_requests} requests."
             )
 
-        self._queue.put((item, result_queue))
+        await self._queue.put((item, future))
         self.metrics.current_queue_size = self._queue.qsize()
 
-        return result_queue.get()
+        return await future
 
-    def start(self, runtime: Runtime[P, R]) -> None:
+    async def start(self, runtime: Runtime[P, R]) -> None:
         """Start the batch processing worker.
 
         Args:
@@ -111,39 +107,40 @@ class DynamicBatchStrategy(BatchStrategy[P, R]):
 
         self.runtime = runtime
         self._running = True
-        self._worker_thread = threading.Thread(target=self._worker, daemon=True)
-        self._worker_thread.start()
+        self._worker_task = aio.create_task(self._worker())
 
-        logger.info("DynamicBatchStrategy started")
+        logger.info("DynamicBatchStrategy (async) started")
 
-    def stop(self) -> None:
-        """Stop the batch processing worker (sync)."""
+    async def stop(self) -> None:
+        """Stop the batch processing worker (async)."""
         if not self._running:
             return
 
         self._running = False
 
-        if self._worker_thread:
-            self._worker_thread.join(timeout=5.0)
+        if self._worker_task:
+            self._worker_task.cancel()
+            with contextlib.suppress(aio.CancelledError):
+                await self._worker_task
 
         logger.info(
-            f"DynamicBatchStrategy stopped."
+            f"DynamicBatchStrategy (async) stopped."
             f"Processed {self.metrics.total_requests} requests in "
             f"{self.metrics.total_batches} batches."
         )
 
-    def _worker(self) -> None:
+    async def _worker(self) -> None:
         """Background worker that processes batches."""
         logger.info("Batch worker started")
 
         while self._running:
-            batch: list[tuple[P, queue.Queue[R]]] = []
+            batch: list[tuple[P, aio.Future[R]]] = []
 
             try:
                 try:
-                    first_item = self._queue.get(timeout=1.0)
+                    first_item = await aio.wait_for(self._queue.get(), timeout=1.0)
                     batch.append(first_item)
-                except queue.Empty:
+                except TimeoutError:
                     continue
 
                 batch_start = time.time()
@@ -155,23 +152,26 @@ class DynamicBatchStrategy(BatchStrategy[P, R]):
                         break
 
                     try:
-                        item = self._queue.get(timeout=remaining_time)
+                        item = await aio.wait_for(self._queue.get(), timeout=remaining_time)
                         batch.append(item)
-                    except queue.Empty:
+                    except TimeoutError:
                         break
 
                 if batch:
-                    self._process_batch(batch)
+                    await self._process_batch(batch)
 
+            except aio.CancelledError:
+                logger.info("Batch worker cancelled")
+                break
             except Exception as e:
-                logger.error(f"Error in batch worker:  {e}", exc_info=True)
-                for _, result_queue in batch:
-                    with contextlib.suppress(Exception):
-                        result_queue.put(None)
+                logger.error(f"Error in batch worker: {e}", exc_info=True)
+                for _, future in batch:
+                    if not future.done():
+                        future.set_exception(e)
 
         logger.info("Batch worker stopped")
 
-    def _process_batch(self, batch: list[tuple[P, queue.Queue[R]]]) -> None:
+    async def _process_batch(self, batch: list[tuple[P, aio.Future[R]]]) -> None:
         """Process a batch of items.
 
         Args:
@@ -179,7 +179,7 @@ class DynamicBatchStrategy(BatchStrategy[P, R]):
         """
         batch_size = len(batch)
         items = [item for item, _ in batch]
-        result_queues = [rq for _, rq in batch]
+        futures = [future for _, future in batch]
 
         logger.debug(f"Processing batch of size {batch_size}")
 
@@ -187,14 +187,15 @@ class DynamicBatchStrategy(BatchStrategy[P, R]):
 
         try:
             if hasattr(self.runtime, "infer_batch"):
-                results = self.runtime.infer_batch(items)
+                results = await self.runtime.infer_batch(items)
             else:
-                results = [self.runtime.infer(item) for item in items]
+                results = [await self.runtime.infer(item) for item in items]
 
             processing_time = time.time() - start_time
 
-            for result_queue, result in zip(result_queues, results, strict=False):
-                result_queue.put(result)
+            for future, result in zip(futures, results, strict=False):
+                if not future.done():
+                    future.set_result(result)
 
             self.metrics.add_batch(batch_size, processing_time)
             self.metrics.current_batch_size = batch_size
@@ -204,9 +205,9 @@ class DynamicBatchStrategy(BatchStrategy[P, R]):
 
         except Exception as e:
             logger.error(f"Batch processing failed: {e}", exc_info=True)
-            for result_queue in result_queues:
-                with contextlib.suppress(Exception):
-                    result_queue.put(None)
+            for future in futures:
+                if not future.done():
+                    future.set_exception(e)
 
 
 __all__ = ["DynamicBatchStrategy", "QueueFullError"]

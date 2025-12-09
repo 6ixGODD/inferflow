@@ -10,13 +10,13 @@ from inferflow.types import P
 from inferflow.types import R
 
 if t.TYPE_CHECKING:
-    from inferflow.batch import BatchStrategy
-    from inferflow.runtime import Runtime
+    from inferflow.asyncio.batch import BatchStrategy
+    from inferflow.asyncio.runtime import Runtime
     from inferflow.types import ImageInput
 
 
 class Pipeline(abc.ABC, t.Generic[P, R, O]):
-    """Abstract inference pipeline (sync version).
+    """Abstract inference pipeline (async version).
 
     A pipeline combines:
     - Preprocessing: Convert raw input to model-ready format
@@ -31,8 +31,8 @@ class Pipeline(abc.ABC, t.Generic[P, R, O]):
     Example:
         ```python
         pipeline = ClassificationPipeline(runtime=runtime)
-        with pipeline.serve():
-            result = pipeline(image)
+        async with pipeline.serve():
+            result = await pipeline(image)
             print(
                 f"Class: {result.class_name}, Confidence: {result.confidence}"
             )
@@ -54,7 +54,7 @@ class Pipeline(abc.ABC, t.Generic[P, R, O]):
         self.batch_strategy = batch_strategy
 
     @abc.abstractmethod
-    def preprocess(self, input: ImageInput) -> P:
+    async def preprocess(self, input: ImageInput) -> P:
         """Preprocess raw input into model-ready format.
 
         Args:
@@ -65,7 +65,7 @@ class Pipeline(abc.ABC, t.Generic[P, R, O]):
         """
 
     @abc.abstractmethod
-    def postprocess(self, raw: R) -> O:
+    async def postprocess(self, raw: R) -> O:
         """Postprocess raw model output into structured result.
 
         Args:
@@ -75,7 +75,7 @@ class Pipeline(abc.ABC, t.Generic[P, R, O]):
             Structured output (classification result, detections, etc.)
         """
 
-    def infer(self, preprocessed: P) -> R:
+    async def infer(self, preprocessed: P) -> R:
         """Run inference on preprocessed input.
 
         This method automatically uses batching if a batch strategy is configured.
@@ -87,29 +87,29 @@ class Pipeline(abc.ABC, t.Generic[P, R, O]):
             Raw inference result.
         """
         if self.batch_strategy:
-            return self.batch_strategy.submit(preprocessed)
-        return self.runtime.infer(preprocessed)
+            return await self.batch_strategy.submit(preprocessed)
+        return await self.runtime.infer(preprocessed)
 
-    def __call__(self, input: ImageInput) -> O:
+    async def __call__(self, input: ImageInput) -> O:
         """End-to-end inference.
 
         Args:
-            input:  Raw input.
+            input: Raw input.
 
         Returns:
             Structured output.
 
         Example:
             ```python
-            result = pipeline(image_bytes)
+            result = await pipeline(image_bytes)
             ```
         """
-        preprocessed = self.preprocess(input)
-        raw = self.infer(preprocessed)
-        return self.postprocess(raw)
+        preprocessed = await self.preprocess(input)
+        raw = await self.infer(preprocessed)
+        return await self.postprocess(raw)
 
-    @contextlib.contextmanager
-    def serve(self) -> t.Iterator[t.Self]:
+    @contextlib.asynccontextmanager
+    async def serve(self) -> t.AsyncIterator[t.Self]:
         """Start serving pipeline with automatic lifecycle management.
 
         This method:
@@ -120,19 +120,19 @@ class Pipeline(abc.ABC, t.Generic[P, R, O]):
 
         Example:
             ```python
-            with pipeline.serve():
-                result = pipeline(image)
+            async with pipeline.serve():
+                result = await pipeline(image)
             ```
         """
-        with self.runtime.context():
+        async with self.runtime.context():
             if self.batch_strategy:
-                self.batch_strategy.start(self.runtime)
+                await self.batch_strategy.start(self.runtime)
 
             try:
                 yield self
             finally:
                 if self.batch_strategy:
-                    self.batch_strategy.stop()
+                    await self.batch_strategy.stop()
 
 
 __all__ = ["Pipeline", "classification", "detection", "segmentation"]
