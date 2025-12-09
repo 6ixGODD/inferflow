@@ -40,7 +40,7 @@ except ImportError as e:
     _warnings.warn(f"C++ extensions not available: {e}. Falling back to Python implementation.", stacklevel=2)
 
 
-__version__ = "0.1.1a0"
+__version__ = "0.1.1a1"
 
 __all__ = [
     "_C",
