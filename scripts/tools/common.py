@@ -1,223 +1,311 @@
+"""Common Utilities for CLI Scripts.
+
+Provides logging, formatting, and helper functions for command-line
+tools
+"""
+
 from __future__ import annotations
 
-import pathlib as pl
+import contextlib
+import os
+import pathlib
 import sys
+import textwrap
 import typing as t
 
-import colorama
+import halo
 
-colorama.init(autoreset=True)
-Fore = colorama.Fore
-Style = colorama.Style
+from scripts.tools.ansi import ANSI
 
-
-def print_separator(char: str = "=", length: int = 76) -> None:
-    """Print a separator line.
-
-    Args:
-        char: Character to use for the separator
-        length: Length of the separator line
-    """
-    print(Style.DIM + char * length + Style.RESET_ALL)
+spinner = halo.Halo(spinner="dots")
 
 
-def print_header(title: str) -> None:
-    """Print a formatted header.
+def success(message: str, /, prefix: str = "✓") -> None:
+    """Print a success message."""
+    print(f"{ANSI.success(prefix)} {message}")
 
-    Args:
-        title: Header title text
-    """
+
+def error(message: str, /, prefix: str = "✗") -> None:
+    """Print an error message."""
+    print(f"{ANSI.error(prefix)} {message}", file=sys.stderr)
+
+
+def warning(message: str, /, prefix: str = "⚠") -> None:
+    """Print a warning message."""
+    print(f"{ANSI.warning(prefix)} {message}")
+
+
+def info(message: str, /, prefix: str = "ℹ") -> None:
+    """Print an info message."""
+    print(f"{ANSI.info(prefix)} {message}")
+
+
+def debug(message: str, /, prefix: str = "→") -> None:
+    """Print a debug message (dimmed)."""
+    print(ANSI.format(f"{prefix} {message}", ANSI.STYLE.DIM))
+
+
+def step(message: str, /, step: int | None = None) -> None:
+    """Print a step message in a process."""
+    if step is not None:
+        prefix = ANSI.format(f"[{step}]", ANSI.FG.CYAN, ANSI.STYLE.BOLD)
+        print(f"\n{prefix} {message}")
+    else:
+        print(f"\n▸ {message}")
+
+
+def path(
+    path: str | pathlib.Path | os.PathLike[str],
+    /,
+    label: str | None = None,
+    exists: bool | None = None,
+) -> None:
+    """Print a formatted file path."""
+    path = pathlib.Path(path)
+
+    parts = []
+    if label:
+        parts.append(ANSI.format(f"{label}:", ANSI.STYLE.BOLD))
+
+    if exists is not None:
+        indicator = ANSI.success("✓") if exists else ANSI.error("✗")
+        parts.append(indicator)
+
+    parts.append(ANSI.format(str(path), ANSI.FG.CYAN))
+    print(" ".join(parts))
+
+
+def command(cmd: str, /) -> None:
+    """Print a command being executed."""
+    print(ANSI.format(f"  $ {cmd}", ANSI.FG.GRAY, ANSI.STYLE.DIM))
+
+
+def header(text: str, /) -> None:
+    """Print a section header."""
     print()
-    print_separator()
-    print(Style.BRIGHT + Fore.CYAN + title + Style.RESET_ALL)
-    print_separator()
+    print(ANSI.format(text, ANSI.STYLE.BOLD))
+    print(ANSI.format("─" * len(text), ANSI.FG.GRAY))
+
+
+def separator(char: str = "─", length: int = 60) -> None:
+    """Print a separator line."""
+    print(ANSI.format(char * length, ANSI.FG.GRAY))
+
+
+def key_value(
+    data: dict[str, t.Any],
+    /,
+    indent: int = 0,
+) -> None:
+    """Print key-value pairs in a clean format."""
+    if not data:
+        return
+
+    max_key_len = max(len(str(k)) for k in data)
+    indent_str = "  " * indent
+
+    for key, value in data.items():
+        key_str = ANSI.format(str(key).ljust(max_key_len), ANSI.STYLE.BOLD)
+        value_str = str(value)
+        print(f"{indent_str}{key_str}  {value_str}")
+
+
+def list_items(
+    items: list[str],
+    /,
+    bullet: str = "•",
+    indent: int = 0,
+) -> None:
+    """Print a bulleted list of items."""
+    indent_str = "  " * indent
+    for item in items:
+        print(f"{indent_str}{ANSI.format(bullet, ANSI.FG.CYAN)} {item}")
+
+
+@contextlib.contextmanager
+def loading(
+    text: str = "Loading",
+    /,
+    success_text: str | None = None,
+    error_text: str | None = None,
+) -> t.Generator[t.Any, None, None]:
+    """Context manager for showing a loading spinner."""
+    spinner.text = text
+    spinner.start()
+
+    try:
+        yield spinner
+        if success_text:
+            spinner.succeed(success_text)
+        else:
+            spinner.succeed()
+    except Exception as e:
+        if error_text:
+            spinner.fail(error_text)
+        else:
+            spinner.fail(f"{text} failed: {e}")
+        raise
+    finally:
+        spinner.stop()
+
+
+@contextlib.contextmanager
+def section(title: str, /) -> t.Generator[None, None, None]:
+    """Context manager for a named section."""
+    print()
+    print(ANSI.format(f"┌─ {title}", ANSI.FG.CYAN, ANSI.STYLE.BOLD))
+
+    try:
+        yield
+    finally:
+        print(ANSI.format("└─" + "─" * (len(title) + 2), ANSI.FG.CYAN))
+
+
+def banner(text: str, /, subtitle: str | None = None, version: str | None = None) -> None:
+    """Print an application banner."""
+    width = max(len(text), len(subtitle) if subtitle else 0) + 4
+
+    print()
+    print(ANSI.format("┌" + "─" * (width - 2) + "┐", ANSI.FG.CYAN, ANSI.STYLE.BOLD))
+    print(ANSI.format(f"│ {text.center(width - 4)} │", ANSI.FG.CYAN, ANSI.STYLE.BOLD))
+
+    if subtitle:
+        print(ANSI.format(f"│ {subtitle.center(width - 4)} │", ANSI.FG.CYAN))
+
+    if version:
+        version_text = f"v{version}"
+        print(ANSI.format(f"│ {version_text.center(width - 4)} │", ANSI.FG.GRAY))
+
+    print(ANSI.format("└" + "─" * (width - 2) + "┘", ANSI.FG.CYAN, ANSI.STYLE.BOLD))
     print()
 
 
-def log_info(message: str) -> None:
-    """Print an info message.
+def confirm(prompt: str, /, default: bool = False) -> bool:
+    """Ask for user confirmation with a yes/no prompt."""
+    suffix = ANSI.format("[Y/n]" if default else "[y/N]", ANSI.STYLE.DIM)
+    response = input(f"{prompt} {suffix} ").strip().lower()
 
-    Args:
-        message: Info message to display
-    """
-    icon = Fore.BLUE + "[I]" + Style.RESET_ALL
-    print(f"{icon} {message}")
+    if not response:
+        return default
 
+    if response in ("y", "yes"):
+        return True
+    if response in ("n", "no"):
+        return False
 
-def log_success(message: str) -> None:
-    """Print a success message.
-
-    Args:
-        message: Success message to display
-    """
-    icon = Fore.GREEN + "[✓]" + Style.RESET_ALL
-    print(f"{icon} {message}")
+    error("Please answer 'y' or 'n'")
+    return confirm(prompt, default)
 
 
-def log_warn(message: str) -> None:
-    """Print a warning message.
+def prompt_input(message: str, /, default: str = "") -> str:
+    """Prompt user for input."""
+    if default:
+        default_text = ANSI.format(f"[{default}]", ANSI.STYLE.DIM)
+        full_message = f"{message} {default_text}:  "
+    else:
+        full_message = f"{message}: "
 
-    Args:
-        message: Warning message to display
-    """
-    icon = Fore.YELLOW + "[W]" + Style.RESET_ALL
-    print(f"{icon} {message}")
-
-
-def log_error(message: str) -> None:
-    """Print an error message.
-
-    Args:
-        message: Error message to display
-    """
-    icon = Fore.RED + "[E]" + Style.RESET_ALL
-    print(f"{icon} {message}", file=sys.stderr)
+    response = input(full_message).strip()
+    return response if response else default
 
 
-def log_step(message: str) -> None:
-    """Print a step message.
-
-    Args:
-        message: Step message to display
-    """
-    icon = Fore.MAGENTA + "[*]" + Style.RESET_ALL
-    print(f"{icon} {message}")
-
-
-def die(message: str, exit_code: int = 1) -> t.NoReturn:
-    """Print an error message and exit.
-
-    Args:
-        message: Error message to display
-        exit_code: Exit code to use (default: 1)
-    """
+def exception_detail(exc: Exception, /, show_traceback: bool = False) -> None:
+    """Display detailed exception information."""
     print()
-    log_error(f"Error: {message}")
+    print(ANSI.error("┌" + "─" * 68 + "┐"))
+    print(ANSI.error(f"│ ERROR: {type(exc).__name__}".ljust(70) + "│"))
+    print(ANSI.error("├" + "─" * 68 + "┤"))
+
+    # Wrap error message
+    msg = str(exc)
+    for line in textwrap.wrap(msg, width=66):
+        print(ANSI.error(f"│ {line}".ljust(70) + "│"))
+
+    print(ANSI.error("└" + "─" * 68 + "┘"))
+
+    if show_traceback:
+        print()
+        print(ANSI.format("Traceback:", ANSI.STYLE.DIM))
+        print(ANSI.format("─" * 70, ANSI.FG.GRAY))
+        import traceback
+
+        traceback.print_exception(type(exc), exc, exc.__traceback__)
+
+
+def error_summary(
+    title: str,
+    /,
+    details: dict[str, str] | None = None,
+    suggestions: list[str] | None = None,
+) -> None:
+    """Display an error summary with optional details and suggestions."""
+    print()
+    print(ANSI.error(f"✗ {title}"))
+    print()
+
+    if details:
+        print(ANSI.format("Details:", ANSI.STYLE.BOLD))
+        key_value(details, indent=1)
+        print()
+
+    if suggestions:
+        print(ANSI.format("Suggestions:", ANSI.STYLE.BOLD))
+        list_items(suggestions, bullet="→", indent=1)
+        print()
+
+
+def fatal_error(message: str, /, exit_code: int = 1) -> t.NoReturn:
+    """Display a fatal error and exit."""
+    print()
+    print(ANSI.error("╔" + "═" * 68 + "╗"))
+    print(ANSI.error("║" + " FATAL ERROR ".center(68) + "║"))
+    print(ANSI.error("╠" + "═" * 68 + "╣"))
+
+    for line in textwrap.wrap(message, width=66):
+        print(ANSI.error("║ " + line.ljust(67) + "║"))
+
+    print(ANSI.error("╚" + "═" * 68 + "╝"))
     print()
     sys.exit(exit_code)
 
 
-def format_path(path: str | pl.Path) -> str:
-    """Format a file path with color.
+def show_error(exc: Exception, /, verbose: bool = False) -> None:
+    """Display error information."""
+    error(f"{type(exc).__name__}: {exc}")
 
-    Args:
-        path: Path to format
+    if verbose:
+        print()
+        print(ANSI.format("Traceback:", ANSI.STYLE.DIM))
+        import traceback
 
-    Returns:
-        Formatted path string
-    """
-    return Fore.CYAN + str(path) + Style.RESET_ALL
-
-
-def format_command(command: str) -> str:
-    """Format a command with color.
-
-    Args:
-        command: Command to format
-
-    Returns:
-        Formatted command string
-    """
-    return Fore.LIGHTCYAN_EX + command + Style.RESET_ALL
+        traceback.print_exception(type(exc), exc, exc.__traceback__)
 
 
-def format_key(key: str) -> str:
-    """Format a key/identifier with color.
+def table_dict(
+    data: dict[str, t.Any],
+    /,
+) -> None:
+    """Print a simple table from a dictionary."""
+    if not data:
+        return
 
-    Args:
-        key: Key to format
+    max_key_len = max(len(str(k)) for k in data)
 
-    Returns:
-        Formatted key string
-    """
-    return Fore.YELLOW + key + Style.RESET_ALL
-
-
-def format_code(text: str) -> str:
-    """Format inline code."""
-    return Fore.LIGHTMAGENTA_EX + text + Style.RESET_ALL
+    for key, value in data.items():
+        key_str = ANSI.format(str(key).ljust(max_key_len), ANSI.STYLE.BOLD)
+        print(f"  {key_str}  {value}")
 
 
-def format_value(value: str) -> str:
-    """Format a value with color.
-
-    Args:
-        value: Value to format
-
-    Returns:
-        Formatted value string
-    """
-    return Fore.GREEN + value + Style.RESET_ALL
-
-
-def format_dim(text: str) -> str:
-    """Format text as dimmed.
-
-    Args:
-        text: Text to format
-
-    Returns:
-        Formatted text string
-    """
-    return Style.DIM + text + Style.RESET_ALL
-
-
-def format_bold(text: str) -> str:
-    """Format text as bold.
-
-    Args:
-        text: Text to format
-
-    Returns:
-        Formatted text string
-    """
-    return Style.BRIGHT + text + Style.RESET_ALL
-
-
-def format_status_success(text: str = "SUCCESS ✓") -> str:
-    """Format success status text.
-
-    Args:
-        text: Status text to format
-
-    Returns:
-        Formatted status string
-    """
-    return Style.BRIGHT + Fore.GREEN + text + Style.RESET_ALL
-
-
-def format_status_failed(text: str = "FAILED ✗") -> str:
-    """Format failed status text.
-
-    Args:
-        text: Status text to format
-
-    Returns:
-        Formatted status string
-    """
-    return Style.BRIGHT + Fore.RED + text + Style.RESET_ALL
-
-
-def ensure_dir(directory: str | pl.Path) -> pl.Path:
-    """Ensure a directory exists, create if it doesn't.
-
-    Args:
-        directory: Directory path
-
-    Returns:
-        Path object for the directory
-    """
-    path = pl.Path(directory)
+# Utility functions for file operations
+def ensure_dir(directory: str | pathlib.Path, /) -> pathlib.Path:
+    """Ensure a directory exists, create if it doesn't."""
+    path = pathlib.Path(directory)
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def check_file_exists(filepath: pl.Path, force: bool = False) -> bool:
+def check_file_exists(filepath: pathlib.Path, /, force: bool = False) -> bool:
     """Check if file exists and handle accordingly.
-
-    Args:
-        filepath: Path to check
-        force: If True, skip confirmation prompt
 
     Returns:
         True if should proceed with overwrite, False otherwise
@@ -226,122 +314,70 @@ def check_file_exists(filepath: pl.Path, force: bool = False) -> bool:
         return False
 
     if force:
-        log_warn(f"Overwriting existing file: {filepath}")
+        warning(f"Overwriting existing file: {filepath}")
         return True
 
-    log_warn(f"File already exists: {filepath}")
-    prompt = Fore.YELLOW + "[? ]" + Style.RESET_ALL
-    response = input(f"{prompt} Overwrite? [y/N]: ").strip().lower()
-
-    if response in ("y", "yes"):
-        log_info("Overwriting file...")
+    warning(f"File already exists: {filepath}")
+    if confirm("Overwrite?", default=False):
+        info("Overwriting file...")
         return True
-    log_info("Skipping file generation")
+
+    info("Skipping file generation")
     return False
 
 
-def dir_exists(directory: str | pl.Path) -> bool:
-    """Check if a directory exists.
-
-    Args:
-        directory: Directory path to check
-
-    Returns:
-        True if directory exists, False otherwise
-    """
-    return pl.Path(directory).is_dir()
+def dir_exists(directory: str | pathlib.Path, /) -> bool:
+    """Check if a directory exists."""
+    return pathlib.Path(directory).is_dir()
 
 
-def file_exists(filepath: str | pl.Path) -> bool:
-    """Check if a file exists.
-
-    Args:
-        filepath: File path to check
-
-    Returns:
-        True if file exists, False otherwise
-    """
-    return pl.Path(filepath).is_file()
+def file_exists(filepath: str | pathlib.Path, /) -> bool:
+    """Check if a file exists."""
+    return pathlib.Path(filepath).is_file()
 
 
-def confirm(message: str, default: bool = False) -> bool:
-    """Ask user for confirmation.
-
-    Args:
-        message: Confirmation message
-        default: Default response if user just presses Enter
-
-    Returns:
-        True if user confirmed, False otherwise
-    """
-    prompt_suffix = " [Y/n]: " if default else " [y/N]: "
-    prompt = Fore.YELLOW + "[?]" + Style.RESET_ALL
-    response = input(f"{prompt} {message}{prompt_suffix}").strip().lower()
-
-    if not response:
-        return default
-
-    return response in ("y", "yes")
+# Formatting helper functions
+def format_path(path: str | pathlib.Path, /) -> str:
+    """Format a file path with color."""
+    return ANSI.format(str(path), ANSI.FG.CYAN)
 
 
-def prompt_input(message: str, default: str = "") -> str:
-    """Prompt user for input.
+def format_command(command: str, /) -> str:
+    """Format a command with color."""
+    return ANSI.format(command, ANSI.FG.BRIGHT_CYAN)
 
-    Args:
-        message: Prompt message
-        default: Default value if user just presses Enter
 
-    Returns:
-        User's input or default value
-    """
-    prompt = Fore.CYAN + "[?]" + Style.RESET_ALL
+def format_key(key: str, /) -> str:
+    """Format a key/identifier with color."""
+    return ANSI.format(key, ANSI.FG.YELLOW)
 
-    if default:
-        default_text = format_dim(f"[{default}]")
-        full_message = f"{prompt} {message} {default_text}: "
-    else:
-        full_message = f"{prompt} {message}: "
 
-    response = input(full_message).strip()
-    return response if response else default
+def format_code(text: str, /) -> str:
+    """Format inline code."""
+    return ANSI.format(text, ANSI.FG.BRIGHT_MAGENTA)
+
+
+def format_value(value: str, /) -> str:
+    """Format a value with color."""
+    return ANSI.format(value, ANSI.FG.GREEN)
+
+
+def format_dim(text: str, /) -> str:
+    """Format text as dimmed."""
+    return ANSI.format(text, ANSI.STYLE.DIM)
+
+
+def format_bold(text: str, /) -> str:
+    """Format text as bold."""
+    return ANSI.format(text, ANSI.STYLE.BOLD)
 
 
 def init_ansi_formatter() -> None:
     """Initialize ANSI formatter based on environment."""
-    if not supports_color():
-        disable_colors()
-
-
-def supports_color() -> bool:
-    """Check if the terminal supports color output.
-
-    Returns:
-        True if color is supported, False otherwise
-    """
-    # Check if stdout is a terminal
-    if not hasattr(sys.stdout, "isatty") or not sys.stdout.isatty():
-        return False
-
-    # Check environment variables
-    import os
-
-    return not os.environ.get("NO_COLOR")
-
-
-def disable_colors() -> None:
-    """Disable color output by replacing color codes with empty strings."""
-    global Fore, Style
-
-    class NoColor:
-        def __getattr__(self, name: str) -> str:
-            return ""
-
-    Fore = NoColor()
-    Style = NoColor()
+    if not ANSI.supports_color():
+        ANSI.enable(False)
 
 
 def setup_quiet_mode() -> None:
     """Redirect stdout to devnull for quiet mode."""
-    import os
-
-    sys.stdout = open(os.devnull, "w")  # noqa
+    sys.stdout = open(os.devnull, "w")  # noqa: PTH123, SIM115
