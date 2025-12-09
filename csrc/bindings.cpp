@@ -1,7 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "inferflow/batch/batcher.hpp"
 #include "inferflow/ops/bbox_ops.hpp"
 
 namespace py = pybind11;
@@ -38,12 +37,6 @@ Args:
 
 Returns:
     Output tensor of shape (..., 4) in xyxy format
-
-Example:
-    >>> boxes_xywh = torch. tensor([[100, 100, 50, 50]])
-    >>> boxes_xyxy = _C.ops.bbox.xywh2xyxy(boxes_xywh)
-    >>> print(boxes_xyxy)
-    tensor([[ 75.,  75., 125., 125.]])
 )doc");
 
   bbox.def("xyxy2xywh", &inferflow::ops::bbox::Xyxy2Xywh, py::arg("x"),
@@ -73,6 +66,4 @@ Args:
 Returns:
     IoU matrix of shape (N, M)
 )doc");
-
-  inferflow::batch::BindBatchModule(m);
 }
