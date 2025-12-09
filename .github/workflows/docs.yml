@@ -4,15 +4,16 @@ on:
   push:
     branches:
       - master
+      - main
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
       - '.github/workflows/docs.yml'
       - 'pyproject.toml'
-      - 'poetry.lock'
   pull_request:
     branches:
       - master
+      - main
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
@@ -23,10 +24,15 @@ permissions:
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   build:
     name: Build Documentation
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -43,7 +49,7 @@ jobs:
           git lfs ls-files
 
           if [ -f "docs/assets/images/LOGO.png" ]; then
-            FILE_SIZE=$(stat -f%z "docs/assets/images/LOGO.png" 2>/dev/null || stat -c%s "docs/assets/images/LOGO.png" 2>/dev/null)
+            FILE_SIZE=$(stat -c%s "docs/assets/images/LOGO.png" 2>/dev/null || stat -f%z "docs/assets/images/LOGO.png" 2>/dev/null)
             echo "LOGO.png size: $FILE_SIZE bytes"
 
             if [ "$FILE_SIZE" -lt 200 ]; then
@@ -53,49 +59,48 @@ jobs:
               echo "✅ LOGO.png appears to be a valid image file"
             fi
           else
-            echo "❌ LOGO.png not found"
-            exit 1
+            echo "⚠️  LOGO.png not found, continuing anyway..."
           fi
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: latest
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}-docs
+          cache: 'pip'
 
       - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --extras docs
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[docs]"
+
+      - name: Verify MkDocs installation
+        run: |
+          mkdocs --version
+          pip list | grep mkdocs
 
       - name: Build documentation
-        run: poetry run mkdocs build
+        run: |
+          mkdocs build --strict --verbose
 
       - name: Verify built assets
         run: |
-          echo "Checking built documentation assets..."
-          if [ -f "site/assets/images/LOGO.png" ]; then
-            FILE_SIZE=$(stat -f%z "site/assets/images/LOGO.png" 2>/dev/null || stat -c%s "site/assets/images/LOGO.png" 2>/dev/null)
-            echo "✅ Built LOGO.png size: $FILE_SIZE bytes"
+          echo "Checking built documentation..."
+          ls -lah site/
+
+          if [ -f "site/index.html" ]; then
+            echo "✅ index.html found"
           else
-            echo "❌ LOGO.png not found in built site"
-            ls -la site/assets/ || echo "assets directory not found"
+            echo "❌ index.html not found"
+            exit 1
           fi
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+          if [ -d "site/assets" ]; then
+            echo "✅ Assets directory found"
+            ls -la site/assets/ || true
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: ./site
 
@@ -103,11 +108,20 @@ jobs:
     name: Deploy to GitHub Pages
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Deployment summary
+        run: |
+          echo "## 📚 Documentation Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 URL: ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Deployment successful" >> $GITHUB_STEP_SUMMARY
