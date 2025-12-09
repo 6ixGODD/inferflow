@@ -1,10 +1,12 @@
-# inferflow/asyncio/runtime/onnx.py
-
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import typing as t
+
+from inferflow import Device
+from inferflow import Precision
 
 try:
     import numpy as np
@@ -88,8 +90,22 @@ class ONNXRuntime(
         ```
     """
 
-    def __init__(self, *args, providers: list[str] | None = None, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        model_path: str | os.PathLike[str],
+        device: str | Device,
+        precision: Precision = Precision.FP32,
+        warmup_iterations: int = 3,
+        warmup_shape: tuple[int, ...] = (1, 3, 224, 224),
+        providers: list[str] | None = None,
+    ):
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            precision=precision,
+            warmup_iterations=warmup_iterations,
+            warmup_shape=warmup_shape,
+        )
 
         # Get providers (reuse mixin)
         self.providers = self._get_onnx_providers(providers)

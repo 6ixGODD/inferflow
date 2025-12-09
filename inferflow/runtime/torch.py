@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import typing as t
 
 try:
@@ -10,6 +11,7 @@ except ImportError as e:
 
 from inferflow.runtime import BatchableRuntime
 from inferflow.runtime import RuntimeConfigMixin
+from inferflow.types import Device
 from inferflow.types import Precision
 from inferflow.types import R
 
@@ -330,8 +332,23 @@ class TorchScriptRuntime(
         ```
     """
 
-    def __init__(self, *args: t.Any, auto_add_batch_dim: bool = False, **kwargs: t.Any):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        model_path: str | os.PathLike[str],
+        device: str | Device,
+        precision: Precision = Precision.FP32,
+        warmup_iterations: int = 3,
+        warmup_shape: tuple[int, ...] = (1, 3, 224, 224),
+        auto_add_batch_dim: bool = False,
+    ):
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            precision=precision,
+            warmup_iterations=warmup_iterations,
+            warmup_shape=warmup_shape,
+        )
+
         self.auto_add_batch_dim = auto_add_batch_dim
 
         self.model: torch.jit.ScriptModule | None = None

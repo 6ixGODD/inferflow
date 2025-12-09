@@ -25,11 +25,6 @@ class Pipeline(abc.ABC, t.Generic[P, R, O]):
     - Inference: Run model inference via runtime
     - Postprocessing: Convert raw output to structured result
 
-    Type Parameters:
-        P: Preprocessed input type
-        R: Raw inference result type
-        O: Final output type
-
     Example:
         ```python
         pipeline = ClassificationPipeline(runtime=runtime)

@@ -24,10 +24,6 @@ class Runtime(abc.ABC, t.Generic[P, R]):
         - Inference execution
         - Memory management
 
-    Type Parameters:
-        P: Preprocessed input type (e.g., torch.Tensor, np.ndarray)
-        R: Raw output type from the model
-
     This is the synchronous version of the runtime. For async support,
     see `inferflow.asyncio.runtime.Runtime`.
 
@@ -159,10 +155,6 @@ class BatchableRuntime(Runtime[P, R], abc.ABC):
     Some runtimes (like TorchScript, ONNX) can process multiple inputs
     simultaneously for better throughput. This base class provides a
     common interface for batch inference.
-
-    Type Parameters:
-        P: Preprocessed input type (e.g., torch.Tensor, np.ndarray)
-        R: Raw output type from the model
 
     The default `infer()` implementation delegates to `infer_batch()`,
     so subclasses only need to implement batch inference.
