@@ -48,7 +48,6 @@ select = [
     "F",     # pyflakes
     "I",     # isort (import sorting)
     "N",     # pep8-naming (naming conventions)
-    "UP",    # pyupgrade (modern Python syntax)
     "B",     # flake8-bugbear (common bugs)
     "C4",    # flake8-comprehensions (list/dict comprehensions)
     "SIM",   # flake8-simplify (code simplification)
