@@ -12,7 +12,7 @@ theme:
   logo: assets/images/LOGO.png
   favicon: assets/images/fav.svg
   palette:
-    - media: "(prefers-color-scheme: dark)"
+    - media: '(prefers-color-scheme: dark)'
       scheme: slate
       primary: indigo
       accent: indigo
@@ -52,7 +52,7 @@ extra:
       link: https://pypi.org/project/inferflow
   analytics:
     provider: google
-    property: !ENV GOOGLE_ANALYTICS_KEY
+    property: !ENV 'GOOGLE_ANALYTICS_KEY'
 extra_css:
   - assets/stylesheets/extra.css
 extra_javascript:
@@ -75,8 +75,8 @@ markdown_extensions:
   - pymdownx.caret
   - pymdownx.details
   - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji ''
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg ''
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -90,7 +90,7 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
+          format: !!python/name:pymdownx.superfences.fence_code_format ''
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.tasklist:
@@ -116,7 +116,7 @@ plugins:
             show_symbol_type_toc: true
             members_order: source
             group_by_category: true
-            show_if_no_docstring: false
+            show_if_no_docstring: true
             show_signature: true
             show_signature_annotations: true
             separate_signature: true
@@ -133,22 +133,59 @@ plugins:
 nav:
   - Home: index.md
   - API Reference:
-      - Batch Strategy:
-          - reference/batch/index.md
-          - Dynamic Batching Strategy: reference/batch/dynamic.md
-      - Pipeline:
-          - reference/pipeline/index.md
-          - Classification: reference/pipeline/classification.md
-          - Detection: reference/pipeline/detection.md
-          - Segmentation: reference/pipeline/segmentation.md
-      - Runtime:
-          - reference/runtime/index.md
-          - Torchscript Runtime: reference/runtime/torch.md
+      - Inference Runtimes:
+          - Overview: reference/runtime/index.md
           - ONNX Runtime: reference/runtime/onnx.md
           - TensorRT Runtime: reference/runtime/tensorrt.md
-      - Utilities:
-          - reference/utils/index.md
-          - Image Utilities: reference/utils/image.md
-          - YOLO Utilities: reference/utils/yolo.md
+          - TorchScript Runtime: reference/runtime/torch.md
+      - Pipeline:
+          - Overview: reference/pipeline/index.md
+          - Classification:
+              - Overview: reference/pipeline/classification/index.md
+              - Onnx: reference/pipeline/classification/onnx.md
+              - Torch: reference/pipeline/classification/torch.md
+          - Detection:
+              - Overview: reference/pipeline/detection/index.md
+              - Onnx: reference/pipeline/detection/onnx.md
+              - Torch: reference/pipeline/detection/torch.md
+          - Segmentation:
+              - Overview: reference/pipeline/segmentation/index.md
+              - Onnx: reference/pipeline/segmentation/onnx.md
+              - Torch: reference/pipeline/segmentation/torch.md
+      - Batch Processing Strategies:
+          - Overview: reference/batch/index.md
+          - Dynamic Batch Strategy: reference/batch/dynamic.md
+      - Workflow:
+          - Overview: reference/workflow/index.md
+          - Decorator-based Workflow: reference/workflow/decorators.md
+          - Object-oriented Workflow: reference/workflow/tasks.md
+      - AsyncIO-based InferFlow Modules:
+          - Overview: reference/asyncio/index.md
+          - Batch:
+              - Overview: reference/asyncio/batch/index.md
+              - Dynamic: reference/asyncio/batch/dynamic.md
+          - Pipeline (Async):
+              - Overview: reference/asyncio/pipeline/index.md
+              - Classification Pipeline (Async):
+                  - Overview: reference/asyncio/pipeline/classification/index.md
+                  - Onnx: reference/asyncio/pipeline/classification/onnx.md
+                  - Torch: reference/asyncio/pipeline/classification/torch.md
+              - Detection Pipeline (Async):
+                  - Overview: reference/asyncio/pipeline/detection/index.md
+                  - Onnx: reference/asyncio/pipeline/detection/onnx.md
+                  - Torch: reference/asyncio/pipeline/detection/torch.md
+              - Segmentation Pipeline (Async):
+                  - Overview: reference/asyncio/pipeline/segmentation/index.md
+                  - Onnx: reference/asyncio/pipeline/segmentation/onnx.md
+                  - Torch: reference/asyncio/pipeline/segmentation/torch.md
+          - Inference Runtimes (Async):
+              - Overview: reference/asyncio/runtime/index.md
+              - ONNX Runtime (Async): reference/asyncio/runtime/onnx.md
+              - TensorRT Runtime (Async): reference/asyncio/runtime/tensorrt.md
+              - TorchScript Runtime (Async): reference/asyncio/runtime/torch.md
+          - Workflow (Async):
+              - Overview: reference/asyncio/workflow/index.md
+              - Decorator-based Workflow (Async): reference/asyncio/workflow/decorators.md
+              - Object-oriented Workflow (Async): reference/asyncio/workflow/tasks.md
       - Types: reference/types.md
   - License: license.md
