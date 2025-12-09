@@ -1,0 +1,5 @@
+inferflow
+torch
+torchvision
+Pillow
+colorama
