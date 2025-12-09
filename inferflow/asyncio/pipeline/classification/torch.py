@@ -5,12 +5,12 @@ import typing as t
 import torch
 
 from inferflow.asyncio.pipeline import Pipeline
-from inferflow.pipeline.classification import ClassificationMixin
+from inferflow.pipeline.classification.torch import ClassificationMixin
 from inferflow.types import ClassificationOutput
 
 if t.TYPE_CHECKING:
+    from inferflow.asyncio.batch import BatchStrategy
     from inferflow.asyncio.runtime import Runtime
-    from inferflow.batch import BatchStrategy
     from inferflow.types import ImageInput
 
 

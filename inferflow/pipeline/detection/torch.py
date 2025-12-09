@@ -7,17 +7,17 @@ import numpy as np
 import PIL.Image as Image
 import torch
 
+from inferflow._utils.yolo.torch import nms
+from inferflow._utils.yolo.torch import padding_resize
+from inferflow._utils.yolo.torch import scale_bbox
+from inferflow._utils.yolo.torch import xyxy2xywh
 from inferflow.pipeline import Pipeline
 from inferflow.types import Box
 from inferflow.types import DetectionOutput
-from inferflow.utils.yolo import nms
-from inferflow.utils.yolo import padding_resize
-from inferflow.utils.yolo import scale_bbox
-from inferflow.utils.yolo import xyxy2xywh
 
 if t.TYPE_CHECKING:
     from inferflow.batch import BatchStrategy
-    from inferflow.runtime import Runtime
+    from inferflow.runtime.torch import TorchScriptRuntime
     from inferflow.types import ImageInput
 
 
@@ -193,7 +193,7 @@ class YOLOv5DetectionPipeline(
 
     def __init__(
         self,
-        runtime: Runtime[torch.Tensor, tuple[torch.Tensor, ...]],
+        runtime: TorchScriptRuntime,
         image_size: tuple[int, int] = (640, 640),
         stride: int = 32,
         conf_threshold: float = 0.25,

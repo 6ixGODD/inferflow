@@ -7,11 +7,7 @@ import PIL.Image as Image
 from inferflow.types import Box
 
 
-def crop_by_mask(
-    image: np.ndarray,
-    mask: np.ndarray,
-    bounding: bool = False,
-) -> np.ndarray:
+def crop_by_mask(image: np.ndarray, mask: np.ndarray, bounding: bool = False) -> np.ndarray:
     """Crop image by mask.
 
     Args:

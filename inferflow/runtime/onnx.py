@@ -114,7 +114,7 @@ class ONNXRuntimeMixin:
         if self.precision == Precision.FP16 and input.dtype != np.float16:
             return input.astype(np.float16)
 
-        if input.dtype != np.float32:
+        if self.precision == Precision.FP32 and input.dtype != np.float32:
             return input.astype(np.float32)
 
         return input

@@ -4,15 +4,15 @@ import typing as t
 
 import torch
 
+from inferflow._utils.yolo.torch import nms
+from inferflow._utils.yolo.torch import process_mask
+from inferflow._utils.yolo.torch import scale_bbox
+from inferflow._utils.yolo.torch import scale_mask
+from inferflow._utils.yolo.torch import xyxy2xywh
 from inferflow.pipeline import Pipeline
-from inferflow.pipeline.detection import YOLODetectionMixin
+from inferflow.pipeline.detection.torch import YOLODetectionMixin
 from inferflow.types import Box
 from inferflow.types import SegmentationOutput
-from inferflow.utils.yolo import nms
-from inferflow.utils.yolo import process_mask
-from inferflow.utils.yolo import scale_bbox
-from inferflow.utils.yolo import scale_mask
-from inferflow.utils.yolo import xyxy2xywh
 
 if t.TYPE_CHECKING:
     from inferflow.batch import BatchStrategy

@@ -2,13 +2,10 @@ from __future__ import annotations
 
 import time
 
-try:
-    import numpy as np
-    import torch
-    import torch.nn.functional as F
-    import torchvision
-except ImportError as e:
-    raise ImportError("Torch is required. Install with: pip install 'inferflow[torch]'") from e
+import numpy as np
+import torch
+import torch.nn.functional as F
+import torchvision
 
 
 def xywh2xyxy(x: torch.Tensor) -> torch.Tensor:

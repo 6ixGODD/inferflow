@@ -11,6 +11,7 @@ except ImportError as e:
 from inferflow.runtime import BatchableRuntime
 from inferflow.runtime import RuntimeConfigMixin
 from inferflow.types import Precision
+from inferflow.types import R
 
 logger = logging.getLogger("inferflow.runtime.torch")
 
@@ -267,7 +268,7 @@ class TorchRuntimeMixin:
 class TorchScriptRuntime(
     RuntimeConfigMixin,
     TorchRuntimeMixin,
-    BatchableRuntime[torch.Tensor, t.Any],
+    BatchableRuntime[torch.Tensor, R],
 ):
     """TorchScript model runtime (sync version).
 
@@ -398,7 +399,7 @@ class TorchScriptRuntime(
 
         logger.info("Warmup completed")
 
-    def infer(self, input: torch.Tensor) -> t.Any:
+    def infer(self, input: torch.Tensor) -> R:
         """Run inference on a single input.
 
         Automatically handles:
@@ -443,7 +444,7 @@ class TorchScriptRuntime(
         # Post-process (reuse mixin)
         return self._remove_batch_dim_if_added(output, added_batch)
 
-    def infer_batch(self, inputs: list[torch.Tensor]) -> list[t.Any]:
+    def infer_batch(self, inputs: list[torch.Tensor]) -> list[R]:
         """Run inference on a batch of inputs.
 
         Concatenates inputs into a single batch tensor for efficient

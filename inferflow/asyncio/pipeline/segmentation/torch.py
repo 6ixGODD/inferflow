@@ -5,8 +5,8 @@ import typing as t
 import torch
 
 from inferflow.asyncio.pipeline import Pipeline
-from inferflow.pipeline.detection import YOLODetectionMixin
-from inferflow.types import DetectionOutput
+from inferflow.pipeline.segmentation.torch import YOLOSegmentationMixin
+from inferflow.types import SegmentationOutput
 
 if t.TYPE_CHECKING:
     from inferflow.asyncio.runtime import Runtime
@@ -14,17 +14,17 @@ if t.TYPE_CHECKING:
     from inferflow.types import ImageInput
 
 
-class YOLOv5DetectionPipeline(
-    YOLODetectionMixin,
-    Pipeline[torch.Tensor, tuple[torch.Tensor, ...], list[DetectionOutput]],
+class YOLOv5SegmentationPipeline(
+    YOLOSegmentationMixin,
+    Pipeline[torch.Tensor, tuple[torch.Tensor, torch.Tensor], list[SegmentationOutput]],
 ):
-    """YOLOv5 object detection pipeline (async version).
+    """YOLOv5 instance segmentation pipeline (async version).
 
     Performs:
         - Image decoding and conversion
-        - Resizing and normalization
-        - Model inference
-        - Bounding box extraction with NMS
+        - Image resizing and normalization
+        - YOLOv5 inference
+        - Instance segmentation mask extraction with NMS
 
     Args:
         runtime: Inference runtime.
@@ -40,28 +40,28 @@ class YOLOv5DetectionPipeline(
         runtime = TorchScriptRuntime(
             model_path="yolov5s.pt", device="cuda"
         )
-        pipeline = YOLOv5DetectionPipeline(
+        pipeline = YOLOv5SegmentationPipeline(
             runtime=runtime,
             class_names={0: "person", 1: "bicycle", 2: "car"},
         )
         async with pipeline.serve():
             results = await pipeline(image_bytes)
-            for det in results:
+            for result in results:
                 print(
-                    f"{det.class_name}: {det.confidence:.2%} at {det.box.to_xywh()}"
+                    f"{result.class_name}: {result.confidence:.2%} at {result.box.to_xywh()}"
                 )
         ```
     """
 
     def __init__(
         self,
-        runtime: Runtime[torch.Tensor, tuple[torch.Tensor, ...]],
+        runtime: Runtime[torch.Tensor, tuple[torch.Tensor, torch.Tensor]],
         image_size: tuple[int, int] = (640, 640),
         stride: int = 32,
         conf_threshold: float = 0.25,
         iou_threshold: float = 0.45,
         class_names: dict[int, str] | None = None,
-        batch_strategy: BatchStrategy[torch.Tensor, tuple[torch.Tensor, ...]] | None = None,
+        batch_strategy: BatchStrategy[torch.Tensor, tuple[torch.Tensor, torch.Tensor]] | None = None,
     ):
         super().__init__(runtime=runtime, batch_strategy=batch_strategy)
 
@@ -75,7 +75,7 @@ class YOLOv5DetectionPipeline(
         self._padding = None
 
     async def preprocess(self, input: ImageInput) -> torch.Tensor:
-        """Preprocess image input for YOLOv5.
+        """Preprocess image input for YOLOv5-seg.
 
         Args:
             input: Raw image input (bytes, numpy array, PIL Image, or tensor).
@@ -86,17 +86,17 @@ class YOLOv5DetectionPipeline(
         image = self._convert_to_numpy(input)
         return self._preprocess_numpy(image)
 
-    async def postprocess(self, raw: tuple[torch.Tensor, ...]) -> list[DetectionOutput]:
-        """Postprocess YOLOv5 output to detection results.
+    async def postprocess(self, raw: tuple[torch.Tensor, torch.Tensor]) -> list[SegmentationOutput]:
+        """Postprocess YOLOv5-Seg output to segmentation results.
 
         Args:
-            raw: Raw output tuple from model inference.
+            raw: Raw model output (detections and protos).
 
         Returns:
-            DetectionOutput list with detected bounding boxes and class info.
+            SegmentationOutput list with masks and bounding boxes.
         """
-        predictions = raw[0]
-        return self._postprocess_detections(predictions)
+        detections, protos = raw
+        return self._postprocess_segmentation(detections, protos)
 
 
-__all__ = ["YOLOv5DetectionPipeline"]
+__all__ = ["YOLOv5SegmentationPipeline"]
