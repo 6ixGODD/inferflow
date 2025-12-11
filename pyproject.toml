@@ -47,6 +47,7 @@ optional-dependencies.dev = [
   "halo>=0.0.30,<0.0.32",
   "inferflow[torch,test,lint,docs]",
   "pip-tools>=7",
+  "pre-commit>=3,<4",
   "pyyaml>=6,<7",
 ]
 # Documentation
@@ -59,7 +60,7 @@ optional-dependencies.docs = [
 ]
 # Linting
 optional-dependencies.lint = [
-  "pre-commit>=3,<4",
+  "mypy>=1.8,<2",
   "pylint>=3,<4",
   "ruff>=0.1,<1",
 ]
