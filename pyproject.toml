@@ -61,7 +61,7 @@ optional-dependencies.docs = [
 # Linting
 optional-dependencies.lint = [
   "mypy>=1.8,<2",
-  "pylint>=3,<4",
+  "pylint>=3,<5",
   "ruff>=0.1,<1",
 ]
 # ONNX Runtime
