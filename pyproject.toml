@@ -10,7 +10,7 @@ requires = [
 
 [project]
 name = "inferflow"
-version = "0.1.1a2"
+version = "0.1.1a3"
 description = "Universal Inference Pipeline Framework for Computer Vision"
 readme = "README.md"
 keywords = [ "computer-vision", "deep-learning", "inference", "pipeline" ]
