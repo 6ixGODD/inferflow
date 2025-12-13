@@ -36,8 +36,8 @@ classifiers = [
 
 # Core dependencies
 dependencies = [
-  "numpy>=1.23,<1.27",
-  "opencv-python>=4.5.5,<5",
+  "numpy>=2,<2.3",
+  "opencv-python>=4.10,<4.12",
   "pillow>=10,<13",
 ]
 
